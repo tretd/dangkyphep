@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   JavaScript Application Core (Global Cloud Sync & Default Supabase Pre-Config)
+   JavaScript Application Core (Default August 2026 & Hardcoded Supabase Credentials)
    ========================================================================== */
 
 (function () {
@@ -51,15 +51,16 @@
         { code: 'NV005', name: 'Hoàng Thị Em' }
     ];
 
+    // Default Month set to August 2026 (0-indexed: 7 = August)
     const DEFAULT_CONFIG = {
-        targetMonth: 6, // 0-indexed: 6 = July
+        targetMonth: 7, 
         targetYear: 2026,
         startTime: '',
         endTime: '',
         isOpenAlways: true
     };
 
-    // Pre-configured Supabase Project URL & Anon Key (Auto-sync for all external devices)
+    // Pre-configured Active Supabase Cloud Project Credentials (Built-in Auto Sync)
     const DEFAULT_SUPABASE = {
         url: 'https://duyttscaoezluyhvwnud.supabase.co',
         key: 'sb_publishable_BYEpFH4CdWD6gZtXnZVacg_uIEX_cxK'
@@ -194,19 +195,27 @@
 
         let savedSupa = localStorage.getItem(STORAGE_SUPABASE) || localStorage.getItem('leave_app_supabase_v8') || localStorage.getItem('leave_app_supabase_v5');
         if (savedSupa) {
-            const parsed = JSON.parse(savedSupa);
-            supabaseConfig = {
-                url: sanitizeSupabaseUrl(parsed.url) || DEFAULT_SUPABASE.url,
-                key: parsed.key || DEFAULT_SUPABASE.key
-            };
+            try {
+                const parsed = JSON.parse(savedSupa);
+                supabaseConfig = {
+                    url: sanitizeSupabaseUrl(parsed.url) || DEFAULT_SUPABASE.url,
+                    key: parsed.key ? parsed.key : DEFAULT_SUPABASE.key
+                };
+            } catch (e) {
+                supabaseConfig = { ...DEFAULT_SUPABASE };
+            }
         } else {
             supabaseConfig = { ...DEFAULT_SUPABASE };
         }
 
-        supabaseUrl.value = supabaseConfig.url || DEFAULT_SUPABASE.url;
-        supabaseKey.value = supabaseConfig.key || '';
+        // Guarantee active URL & Key are never empty
+        if (!supabaseConfig.url) supabaseConfig.url = DEFAULT_SUPABASE.url;
+        if (!supabaseConfig.key) supabaseConfig.key = DEFAULT_SUPABASE.key;
 
-        configMonthSelect.value = String(appConfig.targetMonth ?? 6);
+        supabaseUrl.value = supabaseConfig.url;
+        supabaseKey.value = supabaseConfig.key;
+
+        configMonthSelect.value = String(appConfig.targetMonth ?? 7);
         configYearSelect.value = String(appConfig.targetYear ?? 2026);
 
         startTimeInput.value = appConfig.startTime || '';
@@ -219,9 +228,7 @@
         localStorage.setItem(STORAGE_EMPLOYEES, JSON.stringify(employees));
         localStorage.setItem(STORAGE_REGISTRATIONS, JSON.stringify(registrations));
         localStorage.setItem(STORAGE_CONFIG, JSON.stringify(appConfig));
-        if (supabaseConfig.url || supabaseConfig.key) {
-            localStorage.setItem(STORAGE_SUPABASE, JSON.stringify(supabaseConfig));
-        }
+        localStorage.setItem(STORAGE_SUPABASE, JSON.stringify(supabaseConfig));
 
         if (syncChannel) {
             syncChannel.postMessage({ type: 'DATA_UPDATED' });
@@ -229,7 +236,7 @@
     }
 
     function updateMonthUIHeaders() {
-        const m = (appConfig.targetMonth ?? 6) + 1;
+        const m = (appConfig.targetMonth ?? 7) + 1;
         const y = appConfig.targetYear ?? 2026;
         const mStr = String(m).padStart(2, '0');
 
@@ -242,12 +249,15 @@
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
         const cleanUrl = sanitizeSupabaseUrl(supabaseConfig.url || DEFAULT_SUPABASE.url);
+        const activeKey = supabaseConfig.key || DEFAULT_SUPABASE.key;
 
-        if (window.supabase && cleanUrl && supabaseConfig.key) {
+        if (window.supabase && cleanUrl && activeKey) {
             try {
                 supabaseConfig.url = cleanUrl;
+                supabaseConfig.key = activeKey;
                 supabaseUrl.value = cleanUrl;
-                supabaseClient = window.supabase.createClient(cleanUrl, supabaseConfig.key);
+                supabaseKey.value = activeKey;
+                supabaseClient = window.supabase.createClient(cleanUrl, activeKey);
                 fetchSupabaseData();
             } catch (err) {
                 supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; padding:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
@@ -255,7 +265,7 @@
         } else {
             supabaseStatusAlert.innerHTML = `
                 <div class="alert alert-warning" style="background:#f8fafc; border-color:#cbd5e1; color:#64748b; padding:10px; border-radius:8px;">
-                    <i class="fa-solid fa-circle-info"></i> Đang chờ Trưởng Nhóm lưu **Supabase Anon Key** để kích hoạt Cloud Realtime tự động cho tất cả nhân viên.
+                    <i class="fa-solid fa-circle-info"></i> Đang tự động sử dụng Supabase Key hệ thống để kết nối Cloud Realtime.
                 </div>`;
         }
     }
@@ -265,7 +275,7 @@
         try {
             const { data, error } = await supabaseClient.from('registrations').select('*');
             if (error) {
-                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; background:#fff1f2; border:1px solid #fecdd3; padding:10px; border-radius:8px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi dữ liệu Supabase: ${escapeHtml(error.message)}. Vui lòng kiểm tra lại URL (Không kèm /rest/v1/)</div>`;
+                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; background:#fff1f2; border:1px solid #fecdd3; padding:10px; border-radius:8px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi dữ liệu Supabase: ${escapeHtml(error.message)}. Vui lòng kiểm tra lại URL</div>`;
                 return;
             }
             if (data) {
@@ -304,7 +314,7 @@
 
     function checkTimeAndTicker() {
         const now = new Date();
-        const mStr = String((appConfig.targetMonth ?? 6) + 1).padStart(2, '0');
+        const mStr = String((appConfig.targetMonth ?? 7) + 1).padStart(2, '0');
         const y = appConfig.targetYear ?? 2026;
 
         if (appConfig.isOpenAlways) {
@@ -375,7 +385,7 @@
     function renderDaysGrid() {
         daysListEl.innerHTML = '';
 
-        const targetMonth = appConfig.targetMonth ?? 6;
+        const targetMonth = appConfig.targetMonth ?? 7;
         const targetYear = appConfig.targetYear ?? 2026;
         const totalDaysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
         const mStr = String(targetMonth + 1).padStart(2, '0');
@@ -713,7 +723,7 @@
         });
 
         btnClearAllRegs.addEventListener('click', () => {
-            const mStr = String((appConfig.targetMonth ?? 6) + 1).padStart(2, '0');
+            const mStr = String((appConfig.targetMonth ?? 7) + 1).padStart(2, '0');
             if (confirm(`CẢNH BÁO: Xóa tất cả lượt đăng ký nghỉ phép Tháng ${mStr}/${appConfig.targetYear}?`)) {
                 registrations = {};
                 saveData();
@@ -745,13 +755,12 @@
         });
 
         btnDisconnectSupabase.addEventListener('click', () => {
-            supabaseConfig = { url: '', key: '' };
+            supabaseConfig = { ...DEFAULT_SUPABASE };
             localStorage.removeItem(STORAGE_SUPABASE);
-            supabaseUrl.value = '';
-            supabaseKey.value = '';
-            supabaseClient = null;
+            supabaseUrl.value = DEFAULT_SUPABASE.url;
+            supabaseKey.value = DEFAULT_SUPABASE.key;
             initSupabaseIfConfigured();
-            showToast('Đã ngắt kết nối Supabase Cloud.', 'info');
+            showToast('Đã khôi phục Supabase Cloud mặc định hệ thống.', 'info');
         });
 
         btnExportExcel.addEventListener('click', exportToCSV);
@@ -816,7 +825,7 @@
         let csvContent = "\uFEFF";
         csvContent += "STT,Ngày Đăng Ký,Thứ,Mã Nhân Viên,Tên Nhân Viên,Thời Gian Đăng Ký\n";
 
-        const targetMonth = appConfig.targetMonth ?? 6;
+        const targetMonth = appConfig.targetMonth ?? 7;
         const targetYear = appConfig.targetYear ?? 2026;
         const totalDaysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
         const mStr = String(targetMonth + 1).padStart(2, '0');
