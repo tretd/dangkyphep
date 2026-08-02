@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép - Tháng 07/2026
-   JavaScript Application Core (Apple Minimalist Theme + Passcode Cuong@032)
+   JavaScript Application Core (Pure HTML5 Vector Graphic System - No Raw Emojis)
    ========================================================================== */
 
 (function () {
@@ -12,12 +12,12 @@
     const DAYS_IN_JULY = 31;
     const ADMIN_PASSCODE = 'Cuong@032';
 
-    const STORAGE_EMPLOYEES = 'leave_app_employees_v4';
-    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v4';
-    const STORAGE_CONFIG = 'leave_app_config_v4';
-    const STORAGE_SUPABASE = 'leave_app_supabase_v4';
+    const STORAGE_EMPLOYEES = 'leave_app_employees_v5';
+    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v5';
+    const STORAGE_CONFIG = 'leave_app_config_v5';
+    const STORAGE_SUPABASE = 'leave_app_supabase_v5';
 
-    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v4') : null;
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v5') : null;
 
     const DEFAULT_EMPLOYEES = [
         { code: 'NV001', name: 'Nguyễn Văn An' },
@@ -129,7 +129,7 @@
                     renderDaysGrid();
                     renderAdminRegsTable();
                     updateDashboardStats();
-                    showToast('Dữ liệu vừa được cập nhật!', 'info');
+                    showToast('Dữ liệu đăng ký vừa được cập nhật!', 'info');
                 }
             };
         }
@@ -167,7 +167,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 4. Supabase Integration
+    // 4. Supabase Cloud Sync
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
         if (window.supabase && supabaseConfig.url && supabaseConfig.key) {
@@ -175,7 +175,7 @@
                 supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.key);
                 supabaseStatusAlert.innerHTML = `
                     <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d;">
-                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud thành công!
+                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công!
                     </div>`;
                 fetchSupabaseData();
             } catch (err) {
@@ -184,7 +184,7 @@
         } else {
             supabaseStatusAlert.innerHTML = `
                 <div class="alert alert-warning" style="background:#f8fafc; border-color:#cbd5e1; color:#64748b;">
-                    <i class="fa-solid fa-info-circle"></i> Đang chạy ở chế độ **Local Demo**. Thêm URL & Key để bật Cloud Realtime.
+                    <i class="fa-solid fa-circle-info"></i> Đang chạy ở chế độ <b>Local Demo</b>. Thêm URL & Key để bật Cloud Realtime.
                 </div>`;
         }
     }
@@ -214,7 +214,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 5. Countdown Ticker Logic
+    // 5. Countdown Ticker
     // ----------------------------------------------------------------------
     function startCountdownTicker() {
         if (timerInterval) clearInterval(timerInterval);
@@ -284,7 +284,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 6. Render Apple Minimalist Compact Grid Layout
+    // 6. Render Days Grid (HTML5 Vector Graphics Only)
     // ----------------------------------------------------------------------
     function renderDaysGrid() {
         daysListEl.innerHTML = '';
@@ -299,7 +299,6 @@
             const displayDateStr = `${String(dayNum).padStart(2, '0')}/07`;
             const existingReg = registrations[dateFormatted];
 
-            // Filter logic
             if (activeFilter === 'available' && (isSunday || existingReg)) continue;
             if (activeFilter === 'registered' && !existingReg) continue;
             if (activeFilter === 'sunday' && !isSunday) continue;
@@ -313,7 +312,7 @@
 
             const card = document.createElement('div');
 
-            // 1. RED CARD: SUNDAY (SOFT CORAL RED)
+            // 1. RED CARD: SUNDAY
             if (isSunday) {
                 card.className = 'compact-card card-red';
                 card.innerHTML = `
@@ -329,7 +328,7 @@
                     </div>
                 `;
             }
-            // 2. GREEN CARD: REGISTERED (SOFT SAGE GREEN - SHOWING EMP CODE - EMP NAME)
+            // 2. GREEN CARD: REGISTERED
             else if (existingReg) {
                 card.className = 'compact-card card-green';
                 card.innerHTML = `
@@ -346,7 +345,7 @@
                     </div>
                 `;
             }
-            // 3. BLUE CARD: AVAILABLE (SOFT CERAMIC BLUE)
+            // 3. BLUE CARD: AVAILABLE
             else {
                 card.className = 'compact-card card-blue';
                 card.innerHTML = `
@@ -372,7 +371,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 7. Event Handlers & Admin Passcode Check (Cuong@032)
+    // 7. Event Handlers
     // ----------------------------------------------------------------------
     function setupEventListeners() {
         searchInput.addEventListener('input', (e) => {
@@ -389,7 +388,6 @@
             });
         });
 
-        // Key Icon Button -> Admin Passcode Modal
         btnAdminKey.addEventListener('click', () => {
             adminPassInput.value = '';
             passErrorMsg.style.display = 'none';
@@ -400,7 +398,6 @@
         closePasswordModal.addEventListener('click', () => closeModal(passwordModal));
         btnCancelPass.addEventListener('click', () => closeModal(passwordModal));
 
-        // Verify Passcode Submit
         passwordForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const inputPass = adminPassInput.value.trim();
@@ -417,7 +414,6 @@
             }
         });
 
-        // Open Register Modal for Employee
         daysListEl.addEventListener('click', (e) => {
             const regBtn = e.target.closest('.btn-open-reg');
             if (regBtn) {
@@ -441,7 +437,6 @@
         closeRegisterModal.addEventListener('click', () => closeModal(registerModal));
         btnCancelRegister.addEventListener('click', () => closeModal(registerModal));
 
-        // Submit Employee Registration
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const dateStr = modalDateInput.value;
@@ -500,7 +495,6 @@
             });
         });
 
-        // Add Employee
         btnAddEmployee.addEventListener('click', () => {
             const code = newEmpId.value.trim().toUpperCase();
             const name = newEmpName.value.trim();
@@ -525,7 +519,6 @@
             showToast(`Đã thêm nhân viên ${code} - ${name}`, 'success');
         });
 
-        // Delete Employee
         empTableBody.addEventListener('click', (e) => {
             const delBtn = e.target.closest('.btn-del-emp');
             if (delBtn) {
@@ -541,7 +534,6 @@
             }
         });
 
-        // Admin Cancel Registration for any date
         adminRegsTableBody.addEventListener('click', (e) => {
             const cancelBtn = e.target.closest('.btn-admin-cancel-reg');
             if (cancelBtn) {
@@ -559,7 +551,6 @@
             }
         });
 
-        // Save Time Window Config
         btnSaveTimeConfig.addEventListener('click', () => {
             appConfig.startTime = startTimeInput.value;
             appConfig.endTime = endTimeInput.value;
@@ -580,7 +571,6 @@
             showToast('Đã mở đăng ký tự do!', 'info');
         });
 
-        // Clear All
         btnClearAllRegs.addEventListener('click', () => {
             if (confirm('CẢNH BÁO: Xóa tất cả lượt đăng ký nghỉ phép Tháng 7/2026?')) {
                 registrations = {};
@@ -594,7 +584,6 @@
             }
         });
 
-        // Supabase Save
         btnSaveSupabase.addEventListener('click', () => {
             supabaseConfig.url = supabaseUrl.value.trim();
             supabaseConfig.key = supabaseKey.value.trim();
@@ -617,7 +606,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 8. Renders & Helpers
+    // 8. Dynamic Renders
     // ----------------------------------------------------------------------
     function renderEmployeeDropdown() {
         selectEmployee.innerHTML = '<option value="">-- Chọn Mã Nhân Viên - Tên Nhân Viên --</option>';

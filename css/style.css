@@ -573,7 +573,7 @@ body.apple-theme {
 }
 
 /* ==========================================================================
-   MODALS STYLING (APPLE GLASS CARD)
+   MODALS STYLING (APPLE macOS STYLE)
    ========================================================================== */
 .modal-overlay {
     position: fixed;
@@ -626,6 +626,49 @@ body.apple-theme {
 
 .modal-body { padding: 20px; max-height: 80vh; overflow-y: auto; }
 
+/* APPLE SEGMENTED CONTROL TAB BAR */
+.apple-tab-bar {
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 12px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.apple-tab-bar .tab-btn {
+    padding: 8px 6px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+
+.apple-tab-bar .tab-btn.active {
+    background: #ffffff;
+    color: #0284c7;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.apple-tab-bar .tab-btn:hover:not(.active) {
+    color: #0f172a;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
 .pass-input-wrapper { position: relative; margin-top: 6px; }
 .pass-input-wrapper i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #d97706; }
 .pass-input-wrapper input { padding-left: 36px !important; }
@@ -669,13 +712,6 @@ body.apple-theme {
 
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
-.admin-tabs { display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 16px; gap: 4px; }
-.tab-btn { padding: 8px 14px; border: none; background: transparent; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; }
-.tab-btn.active { color: #0284c7; border-bottom-color: #0284c7; }
-
-.tab-content { display: none; }
-.tab-content.active { display: block; }
-
 .add-emp-card, .config-card {
     background: #f8fafc;
     padding: 16px;
@@ -710,3 +746,9 @@ body.apple-theme {
 .toast-success { border-left: 4px solid #16a34a; }
 .toast-error { border-left: 4px solid #e11d48; }
 .toast-warning { border-left: 4px solid #d97706; }
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .apple-tab-bar { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .apple-tab-bar .tab-btn span { font-size: 11px; }
+}
