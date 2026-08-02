@@ -59,10 +59,10 @@
         isOpenAlways: true
     };
 
-    // Pre-configured Supabase Project URL (Auto-sync for all external devices)
+    // Pre-configured Supabase Project URL & Anon Key (Auto-sync for all external devices)
     const DEFAULT_SUPABASE = {
         url: 'https://duyttscaoezluyhvwnud.supabase.co',
-        key: ''
+        key: 'sb_publishable_BYEpFH4CdWD6gZtXnZVacg_uIEX_cxK'
     };
 
     let employees = [];
