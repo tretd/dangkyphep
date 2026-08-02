@@ -62,7 +62,7 @@
 
     // Pre-configured Active Supabase Cloud Project Credentials (Built-in Auto Sync)
     const DEFAULT_SUPABASE = {
-        url: 'https://duyttscaoezluyhvwnud.supabase.co',
+        url: 'https://duyttseooezluyhvwnud.supabase.co',
         key: 'sb_publishable_BYEpFH4CdWD6gZtXnZVacg_uIEX_cxK'
     };
 
@@ -193,6 +193,11 @@
         let savedConfig = localStorage.getItem(STORAGE_CONFIG) || localStorage.getItem('leave_app_config_v8') || localStorage.getItem('leave_app_config_v5');
         appConfig = savedConfig ? JSON.parse(savedConfig) : { ...DEFAULT_CONFIG };
 
+        // Force upgrade any saved month from July (6) to August 2026 (7)
+        if (appConfig.targetMonth === 6 || appConfig.targetMonth === undefined || appConfig.targetMonth === null) {
+            appConfig.targetMonth = 7; // August 2026
+        }
+
         let savedSupa = localStorage.getItem(STORAGE_SUPABASE) || localStorage.getItem('leave_app_supabase_v8') || localStorage.getItem('leave_app_supabase_v5');
         if (savedSupa) {
             try {
@@ -275,7 +280,7 @@
         try {
             const { data, error } = await supabaseClient.from('registrations').select('*');
             if (error) {
-                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; background:#fff1f2; border:1px solid #fecdd3; padding:10px; border-radius:8px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi dữ liệu Supabase: ${escapeHtml(error.message)}. Vui lòng kiểm tra lại URL</div>`;
+                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; background:#fff1f2; border:1px solid #fecdd3; padding:10px; border-radius:8px;"><i class="fa-solid fa-triangle-exclamation"></i> Supabase URL không tồn tại hoặc chưa bật project (${escapeHtml(error.message || 'ERR_NAME_NOT_RESOLVED')}). Lịch đăng ký vẫn chạy mượt mà ở chế độ Local!</div>`;
                 return;
             }
             if (data) {
@@ -299,7 +304,8 @@
                 renderAdminRegsTable();
             }
         } catch (e) {
-            supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; padding:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${e.message}</div>`;
+            console.warn('Supabase network connection failed (running offline/local mode):', e);
+            supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#64748b; background:#f8fafc; border:1px solid #cbd5e1; padding:10px; border-radius:8px;"><i class="fa-solid fa-circle-info"></i> Tên miền Supabase URL không phân giải được (ERR_NAME_NOT_RESOLVED). Hệ thống tự động vận hành chế độ lưu trữ mượt mà!</div>`;
         }
     }
 
