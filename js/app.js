@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   JavaScript Application Core (Persistent Storage Fix & Auto Migration)
+   JavaScript Application Core (Streamlined Text: LỊCH ĐĂNG KÝ)
    ========================================================================== */
 
 (function () {
@@ -21,7 +21,18 @@
     setFaviconUrl('https://iili.io/F66acRs.png');
 
     // ----------------------------------------------------------------------
-    // 1. Constants & Persistent Storage Keys (NO VERSION RESET)
+    // Supabase URL Sanitizer Helper
+    // ----------------------------------------------------------------------
+    function sanitizeSupabaseUrl(url) {
+        if (!url) return '';
+        let cleaned = url.trim();
+        cleaned = cleaned.replace(/\/rest\/v1\/?$/i, '');
+        cleaned = cleaned.replace(/\/+$/, '');
+        return cleaned;
+    }
+
+    // ----------------------------------------------------------------------
+    // 1. Constants & Persistent Storage Keys
     // ----------------------------------------------------------------------
     const ADMIN_PASSCODE = 'Cuong@032';
 
@@ -89,7 +100,7 @@
     const adminPassInput = document.getElementById('adminPassInput');
     const passErrorMsg = document.getElementById('passErrorMsg');
 
-    // Register Modal & Dynamic Colorful Employee Cards
+    // Register Modal
     const registerModal = document.getElementById('registerModal');
     const closeRegisterModal = document.getElementById('closeRegisterModal');
     const btnCancelRegister = document.getElementById('btnCancelRegister');
@@ -128,7 +139,7 @@
     const btnExportExcel = document.getElementById('btnExportExcel');
 
     // ----------------------------------------------------------------------
-    // 3. Initialization & Auto Data Migration
+    // 3. Initialization
     // ----------------------------------------------------------------------
     function init() {
         loadData();
@@ -159,7 +170,6 @@
     }
 
     function loadData() {
-        // Auto migrate from legacy version keys if present
         let savedEmp = localStorage.getItem(STORAGE_EMPLOYEES) || localStorage.getItem('leave_app_employees_v8') || localStorage.getItem('leave_app_employees_v5');
         employees = savedEmp ? JSON.parse(savedEmp) : [...DEFAULT_EMPLOYEES];
 
@@ -172,6 +182,7 @@
         let savedSupa = localStorage.getItem(STORAGE_SUPABASE) || localStorage.getItem('leave_app_supabase_v8') || localStorage.getItem('leave_app_supabase_v5');
         if (savedSupa) {
             supabaseConfig = JSON.parse(savedSupa);
+            supabaseConfig.url = sanitizeSupabaseUrl(supabaseConfig.url);
             supabaseUrl.value = supabaseConfig.url || '';
             supabaseKey.value = supabaseConfig.key || '';
         }
@@ -182,7 +193,6 @@
         startTimeInput.value = appConfig.startTime || '';
         endTimeInput.value = appConfig.endTime || '';
 
-        // Immediately persist to new main storage keys
         saveData();
     }
 
@@ -212,13 +222,13 @@
     // 4. Supabase Cloud Sync
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
-        if (window.supabase && supabaseConfig.url && supabaseConfig.key) {
+        const cleanUrl = sanitizeSupabaseUrl(supabaseConfig.url);
+
+        if (window.supabase && cleanUrl && supabaseConfig.key) {
             try {
-                supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.key);
-                supabaseStatusAlert.innerHTML = `
-                    <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d; padding:10px; border-radius:8px;">
-                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công!
-                    </div>`;
+                supabaseConfig.url = cleanUrl;
+                supabaseUrl.value = cleanUrl;
+                supabaseClient = window.supabase.createClient(cleanUrl, supabaseConfig.key);
                 fetchSupabaseData();
             } catch (err) {
                 supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; padding:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
@@ -235,7 +245,16 @@
         if (!supabaseClient) return;
         try {
             const { data, error } = await supabaseClient.from('registrations').select('*');
-            if (!error && data) {
+            if (error) {
+                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; background:#fff1f2; border:1px solid #fecdd3; padding:10px; border-radius:8px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi dữ liệu Supabase: ${escapeHtml(error.message)}. Vui lòng kiểm tra lại URL (Không kèm /rest/v1/)</div>`;
+                return;
+            }
+            if (data) {
+                supabaseStatusAlert.innerHTML = `
+                    <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d; padding:10px; border-radius:8px;">
+                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công!
+                    </div>`;
+
                 const cloudRegs = {};
                 data.forEach(item => {
                     cloudRegs[item.date_str] = {
@@ -251,12 +270,12 @@
                 renderAdminRegsTable();
             }
         } catch (e) {
-            console.log('Supabase sync error', e);
+            supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; padding:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${e.message}</div>`;
         }
     }
 
     // ----------------------------------------------------------------------
-    // 5. Countdown Ticker & Fixed Top Status Banner
+    // 5. Countdown Ticker & Fixed Top Status Banner (Friendly "LỊCH" Text)
     // ----------------------------------------------------------------------
     function startCountdownTicker() {
         if (timerInterval) clearInterval(timerInterval);
@@ -284,7 +303,7 @@
             countdownOverlay.style.display = 'flex';
             topStatusBanner.className = 'top-status-banner closed';
             bannerIcon.className = 'fa-solid fa-hourglass-half';
-            bannerText.textContent = `CỔNG ĐĂNG KÝ ĐANG ĐẾM NGƯỢC CHỜ MỞ (THÁNG ${mStr}/${y})`;
+            bannerText.textContent = `LỊCH ĐĂNG KÝ ĐANG ĐẾM NGƯỢC CHỜ MỞ (THÁNG ${mStr}/${y})`;
 
             const diff = start - now;
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -297,7 +316,7 @@
             cdMins.textContent = String(mins).padStart(2, '0');
             cdSecs.textContent = String(secs).padStart(2, '0');
 
-            cdDescText.textContent = `Hệ thống sẽ tự động mở cổng đăng ký vào lúc: ${formatDateTime(start)}`;
+            cdDescText.textContent = `Hệ thống sẽ tự động mở lịch đăng ký vào lúc: ${formatDateTime(start)}`;
             return;
         }
 
@@ -305,7 +324,7 @@
             countdownOverlay.style.display = 'flex';
             topStatusBanner.className = 'top-status-banner closed';
             bannerIcon.className = 'fa-solid fa-lock';
-            bannerText.textContent = `CỔNG ĐĂNG KÝ ĐÃ KHÓA / HẾT HẠN (THÁNG ${mStr}/${y})`;
+            bannerText.textContent = `LỊCH ĐĂNG KÝ ĐÃ KHÓA / HẾT HẠN (THÁNG ${mStr}/${y})`;
 
             cdDays.textContent = '00';
             cdHours.textContent = '00';
@@ -682,18 +701,19 @@
             }
         });
 
-        // SAVE SUPABASE CONFIG (PERSISTENT & IMMEDIATE UI UPDATE)
         btnSaveSupabase.addEventListener('click', () => {
-            const urlVal = supabaseUrl.value.trim();
+            const rawUrl = supabaseUrl.value;
             const keyVal = supabaseKey.value.trim();
 
-            if (!urlVal || !keyVal) {
+            const cleanUrl = sanitizeSupabaseUrl(rawUrl);
+
+            if (!cleanUrl || !keyVal) {
                 showToast('Vui lòng điền đầy đủ Supabase URL và Anon Key!', 'warning');
                 return;
             }
 
-            supabaseConfig = { url: urlVal, key: keyVal };
-            localStorage.setItem(STORAGE_SUPABASE, JSON.stringify(supabaseConfig));
+            supabaseConfig = { url: cleanUrl, key: keyVal };
+            supabaseUrl.value = cleanUrl;
             saveData();
             initSupabaseIfConfigured();
             showToast('Đã lưu kết nối Supabase Cloud thành công!', 'success');
@@ -702,8 +722,6 @@
         btnDisconnectSupabase.addEventListener('click', () => {
             supabaseConfig = { url: '', key: '' };
             localStorage.removeItem(STORAGE_SUPABASE);
-            localStorage.removeItem('leave_app_supabase_v8');
-            localStorage.removeItem('leave_app_supabase_v5');
             supabaseUrl.value = '';
             supabaseKey.value = '';
             supabaseClient = null;
