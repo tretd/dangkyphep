@@ -831,7 +831,7 @@
             }
         });
 
-        adminRegsTableBody.addEventListener('click', (e) => {
+        adminRegsTableBody.addEventListener('click', async (e) => {
             const cancelBtn = e.target.closest('.btn-admin-cancel-reg');
             if (cancelBtn) {
                 const dateFormatted = cancelBtn.dataset.date;
@@ -839,7 +839,14 @@
                     delete registrations[dateFormatted];
                     saveData();
                     if (supabaseClient) {
-                        supabaseClient.from('registrations').delete().eq('date_str', dateFormatted);
+                        updateCloudBadge('syncing', 'Đang xóa...');
+                        const { error } = await supabaseClient.from('registrations').delete().eq('date_str', dateFormatted);
+                        if (error) {
+                            console.error('Delete registration error:', error);
+                            showToast('Lỗi xóa trên Cloud: ' + error.message, 'error');
+                        } else {
+                            updateCloudBadge('online', 'Cloud Realtime');
+                        }
                     }
                     renderDaysGrid();
                     renderAdminRegsTable();
@@ -856,7 +863,9 @@
             appConfig.isOpenAlways = false;
 
             saveData();
+            updateCloudBadge('syncing', 'Đang lưu...');
             await pushConfigToSupabase();
+            updateCloudBadge('online', 'Cloud Realtime');
             updateMonthUIHeaders();
             renderDaysGrid();
             checkTimeAndTicker();
@@ -873,20 +882,29 @@
             endTimeInput.value = '';
 
             saveData();
+            updateCloudBadge('syncing', 'Đang lưu...');
             await pushConfigToSupabase();
+            updateCloudBadge('online', 'Cloud Realtime');
             updateMonthUIHeaders();
             renderDaysGrid();
             checkTimeAndTicker();
             showToast(`Đã mở đăng ký tự do Tháng ${appConfig.targetMonth + 1}/${appConfig.targetYear}!`, 'info');
         });
 
-        btnClearAllRegs.addEventListener('click', () => {
+        btnClearAllRegs.addEventListener('click', async () => {
             const mStr = String((appConfig.targetMonth ?? 7) + 1).padStart(2, '0');
             if (confirm(`CẢNH BÁO: Xóa tất cả lượt đăng ký nghỉ phép Tháng ${mStr}/${appConfig.targetYear}?`)) {
                 registrations = {};
                 saveData();
                 if (supabaseClient) {
-                    supabaseClient.from('registrations').delete().neq('date_str', '');
+                    updateCloudBadge('syncing', 'Đang xóa tất cả...');
+                    const { error } = await supabaseClient.from('registrations').delete().neq('date_str', '0000-00-00');
+                    if (error) {
+                        console.error('Clear all error:', error);
+                        showToast('Lỗi xóa trên Cloud: ' + error.message, 'error');
+                    } else {
+                        updateCloudBadge('online', 'Cloud Realtime');
+                    }
                 }
                 renderDaysGrid();
                 renderAdminRegsTable();
