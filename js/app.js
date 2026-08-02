@@ -1,26 +1,26 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép - Tháng 07/2026
-   JavaScript Application Core Logic (LocalStorage + Supabase Real-time)
+   JavaScript Application Core (Futuristic Theme + Passcode Cuong@032 + Countdown)
    ========================================================================== */
 
 (function () {
     // ----------------------------------------------------------------------
-    // 1. Constants & Default State
+    // 1. Constants & State
     // ----------------------------------------------------------------------
     const TARGET_YEAR = 2026;
-    const TARGET_MONTH = 6; // 0-indexed: 6 = July (Tháng 7)
+    const TARGET_MONTH = 6; // 0-indexed: 6 = July
     const DAYS_IN_JULY = 31;
+    const ADMIN_PASSCODE = 'Cuong@032'; // Required password for Trưởng nhóm
 
-    // Keys for LocalStorage
-    const STORAGE_EMPLOYEES = 'leave_app_employees_v1';
-    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v1';
-    const STORAGE_CONFIG = 'leave_app_config_v1';
-    const STORAGE_SUPABASE = 'leave_app_supabase_v1';
+    // LocalStorage Keys
+    const STORAGE_EMPLOYEES = 'leave_app_employees_v2';
+    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v2';
+    const STORAGE_CONFIG = 'leave_app_config_v2';
+    const STORAGE_SUPABASE = 'leave_app_supabase_v2';
 
-    // BroadcastChannel for multi-tab realtime sync (local mode)
-    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync') : null;
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v2') : null;
 
-    // Default Initial Employee List
+    // Default Initial Data
     const DEFAULT_EMPLOYEES = [
         { code: 'NV001', name: 'Nguyễn Văn An' },
         { code: 'NV002', name: 'Trần Thị Bình' },
@@ -29,23 +29,22 @@
         { code: 'NV005', name: 'Hoàng Thị Em' }
     ];
 
-    // Default Time Window Config (Open by default for demo, or set default dates)
     const DEFAULT_CONFIG = {
-        startTime: '2026-06-01T00:00',
-        endTime: '2026-07-31T23:59',
+        startTime: '',
+        endTime: '',
         isOpenAlways: true
     };
 
-    // State Variables
+    // Application State
     let employees = [];
-    let registrations = {}; // Format: { "2026-07-01": { empCode: "NV001", empName: "Nguyễn Văn An", note: "Nghỉ phép", time: "2026-08-02 12:00" } }
+    let registrations = {};
     let appConfig = { ...DEFAULT_CONFIG };
     let supabaseConfig = { url: '', key: '' };
     let supabaseClient = null;
     let activeFilter = 'all';
     let searchQuery = '';
+    let timerInterval = null;
 
-    // Days of week mapping (Vietnamese)
     const DAY_NAMES = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
     // ----------------------------------------------------------------------
@@ -54,14 +53,25 @@
     const daysListEl = document.getElementById('daysList');
     const searchInput = document.getElementById('searchInput');
     const filterBtns = document.querySelectorAll('.filter-btn');
-
-    // Stats Elements
-    const displayTimeWindow = document.getElementById('displayTimeWindow');
-    const displayEmpCount = document.getElementById('displayEmpCount');
-    const displayRegCount = document.getElementById('displayRegCount');
     const regStatusIndicator = document.getElementById('regStatusIndicator');
     const statusText = document.getElementById('statusText');
-    const timeRestrictionAlert = document.getElementById('timeRestrictionAlert');
+
+    // Countdown Overlay Elements
+    const countdownOverlay = document.getElementById('countdownOverlay');
+    const cdDescText = document.getElementById('cdDescText');
+    const cdDays = document.getElementById('cdDays');
+    const cdHours = document.getElementById('cdHours');
+    const cdMins = document.getElementById('cdMins');
+    const cdSecs = document.getElementById('cdSecs');
+
+    // Key Button & Password Modal Elements
+    const btnAdminKey = document.getElementById('btnAdminKey');
+    const passwordModal = document.getElementById('passwordModal');
+    const closePasswordModal = document.getElementById('closePasswordModal');
+    const btnCancelPass = document.getElementById('btnCancelPass');
+    const passwordForm = document.getElementById('passwordForm');
+    const adminPassInput = document.getElementById('adminPassInput');
+    const passErrorMsg = document.getElementById('passErrorMsg');
 
     // Register Modal Elements
     const registerModal = document.getElementById('registerModal');
@@ -74,13 +84,12 @@
     const regNote = document.getElementById('regNote');
 
     // Admin Modal Elements
-    const btnAdminModal = document.getElementById('btnAdminModal');
     const adminModal = document.getElementById('adminModal');
     const closeAdminModal = document.getElementById('closeAdminModal');
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    // Admin Employee Form Elements
+    // Admin Employee Elements
     const newEmpId = document.getElementById('newEmpId');
     const newEmpName = document.getElementById('newEmpName');
     const btnAddEmployee = document.getElementById('btnAddEmployee');
@@ -100,8 +109,6 @@
     const btnSaveSupabase = document.getElementById('btnSaveSupabase');
     const btnDisconnectSupabase = document.getElementById('btnDisconnectSupabase');
     const supabaseStatusAlert = document.getElementById('supabaseStatusAlert');
-
-    // Export Button
     const btnExportExcel = document.getElementById('btnExportExcel');
 
     // ----------------------------------------------------------------------
@@ -111,29 +118,26 @@
         loadData();
         setupEventListeners();
         initSupabaseIfConfigured();
-        checkRegistrationTimeWindow();
         renderDaysList();
         renderEmployeeDropdown();
         renderAdminEmployeeTable();
         updateDashboardStats();
 
-        // Listen for sync messages from other tabs
+        // Start countdown ticker interval
+        startCountdownTicker();
+
         if (syncChannel) {
             syncChannel.onmessage = (event) => {
                 if (event.data && event.data.type === 'DATA_UPDATED') {
                     loadData();
                     renderDaysList();
                     updateDashboardStats();
-                    showToast('Lịch đăng ký vừa được người khác cập nhật!', 'info');
+                    showToast('Dữ liệu đăng ký vừa được cập nhật từ thiết bị khác!', 'info');
                 }
             };
         }
-
-        // Auto-check time window every 30 seconds
-        setInterval(checkRegistrationTimeWindow, 30000);
     }
 
-    // Load data from localStorage
     function loadData() {
         const savedEmp = localStorage.getItem(STORAGE_EMPLOYEES);
         employees = savedEmp ? JSON.parse(savedEmp) : [...DEFAULT_EMPLOYEES];
@@ -151,7 +155,6 @@
             supabaseKey.value = supabaseConfig.key || '';
         }
 
-        // Fill time config inputs
         startTimeInput.value = appConfig.startTime || '';
         endTimeInput.value = appConfig.endTime || '';
     }
@@ -161,34 +164,30 @@
         localStorage.setItem(STORAGE_REGISTRATIONS, JSON.stringify(registrations));
         localStorage.setItem(STORAGE_CONFIG, JSON.stringify(appConfig));
 
-        // Notify other tabs
         if (syncChannel) {
             syncChannel.postMessage({ type: 'DATA_UPDATED' });
         }
     }
 
     // ----------------------------------------------------------------------
-    // 4. Supabase Cloud Sync Setup
+    // 4. Supabase Integration
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
         if (window.supabase && supabaseConfig.url && supabaseConfig.key) {
             try {
                 supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.key);
                 supabaseStatusAlert.innerHTML = `
-                    <div class="alert alert-warning" style="background:#ecfdf5; border-color:#a7f3d0; color:#065f46;">
-                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối thành công với Supabase Cloud Database!
+                    <div class="alert alert-warning" style="background:rgba(16, 185, 129, 0.15); border-color:#34d399; color:#6ee7b7;">
+                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Realtime thành công!
                     </div>`;
-
-                // Fetch registrations from Supabase
                 fetchSupabaseData();
             } catch (err) {
-                console.error('Supabase init error:', err);
-                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
+                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#f87171;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
             }
         } else {
             supabaseStatusAlert.innerHTML = `
-                <div class="alert alert-warning" style="background:#f8fafc; border-color:#cbd5e1; color:#475569;">
-                    <i class="fa-solid fa-info-circle"></i> Đang chạy ở chế độ **LocalStorage / Multi-Tab Demo**. Thêm URL & Key để bật Cloud Realtime.
+                <div class="alert alert-warning" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.1); color:#94a3b8;">
+                    <i class="fa-solid fa-info-circle"></i> Đang chạy ở chế độ **Local Demo**. Thêm URL & Key để bật Cloud Realtime.
                 </div>`;
         }
     }
@@ -210,83 +209,100 @@
                 registrations = cloudRegs;
                 saveData();
                 renderDaysList();
-                updateDashboardStats();
             }
         } catch (e) {
-            console.log('Supabase table query failed, fallback to local', e);
+            console.log('Supabase sync error', e);
         }
     }
 
     // ----------------------------------------------------------------------
-    // 5. Time Window & Lock Verification
+    // 5. Countdown Clock & Frosted Shield Ticker
     // ----------------------------------------------------------------------
-    function isWithinTimeWindow() {
-        if (appConfig.isOpenAlways) return true;
+    function startCountdownTicker() {
+        if (timerInterval) clearInterval(timerInterval);
+        checkTimeAndTicker();
+        timerInterval = setInterval(checkTimeAndTicker, 1000);
+    }
+
+    function checkTimeAndTicker() {
         const now = new Date();
+
+        if (appConfig.isOpenAlways) {
+            countdownOverlay.style.display = 'none';
+            regStatusIndicator.className = 'status-indicator open';
+            statusText.textContent = 'Đang Mở Đăng Ký';
+            return;
+        }
+
         const start = appConfig.startTime ? new Date(appConfig.startTime) : null;
         const end = appConfig.endTime ? new Date(appConfig.endTime) : null;
 
-        if (start && now < start) return false;
-        if (end && now > end) return false;
-        return true;
-    }
-
-    function checkRegistrationTimeWindow() {
-        const isOpen = isWithinTimeWindow();
-
-        if (isOpen) {
-            regStatusIndicator.className = 'status-indicator open';
-            statusText.textContent = 'Đang Mở Đăng Ký';
-            timeRestrictionAlert.style.display = 'none';
-        } else {
+        // Future start time -> Show Countdown Overlay & Frosted Glass Blur
+        if (start && now < start) {
+            countdownOverlay.style.display = 'flex';
             regStatusIndicator.className = 'status-indicator closed';
-            statusText.textContent = 'Đã Đóng Đăng Ký';
-            timeRestrictionAlert.style.display = 'flex';
+            statusText.textContent = 'Chưa Đếm Xong';
+
+            const diff = start - now;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+            cdDays.textContent = String(days).padStart(2, '0');
+            cdHours.textContent = String(hours).padStart(2, '0');
+            cdMins.textContent = String(mins).padStart(2, '0');
+            cdSecs.textContent = String(secs).padStart(2, '0');
+
+            cdDescText.textContent = `Hệ thống đăng ký nghỉ phép sẽ tự động mở vào: ${formatDateTime(start)}`;
+            return;
         }
 
-        // Display time range label
-        if (appConfig.isOpenAlways) {
-            displayTimeWindow.textContent = 'Đang mở (Không giới hạn)';
-        } else {
-            const startStr = appConfig.startTime ? formatDateTimeStr(appConfig.startTime) : '...';
-            const endStr = appConfig.endTime ? formatDateTimeStr(appConfig.endTime) : '...';
-            displayTimeWindow.textContent = `${startStr} đến ${endStr}`;
+        // Passed end time -> Closed
+        if (end && now > end) {
+            countdownOverlay.style.display = 'flex';
+            regStatusIndicator.className = 'status-indicator closed';
+            statusText.textContent = 'Đã Hết Hạn';
+
+            cdDays.textContent = '00';
+            cdHours.textContent = '00';
+            cdMins.textContent = '00';
+            cdSecs.textContent = '00';
+            cdDescText.textContent = `Thời gian đăng ký đã kết thúc lúc: ${formatDateTime(end)}`;
+            return;
         }
+
+        // Currently open
+        countdownOverlay.style.display = 'none';
+        regStatusIndicator.className = 'status-indicator open';
+        statusText.textContent = 'Đang Mở Đăng Ký';
     }
 
-    function formatDateTimeStr(isoStr) {
-        if (!isoStr) return '';
-        const d = new Date(isoStr);
+    function formatDateTime(d) {
+        if (!d) return '';
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
         const hours = String(d.getHours()).padStart(2, '0');
         const mins = String(d.getMinutes()).padStart(2, '0');
-        return `${hours}:${mins} ${day}/${month}/${year}`;
+        return `${hours}:${mins} - ${day}/${month}/${year}`;
     }
 
     // ----------------------------------------------------------------------
-    // 6. Render List of July 2026 Days
+    // 6. Render July 2026 Calendar Grid
     // ----------------------------------------------------------------------
     function renderDaysList() {
         daysListEl.innerHTML = '';
 
-        let totalWorkingDays = 0;
-        let registeredCount = 0;
-
         for (let dayNum = 1; dayNum <= DAYS_IN_JULY; dayNum++) {
             const dateObj = new Date(TARGET_YEAR, TARGET_MONTH, dayNum);
-            const dayOfWeekIndex = dateObj.getDay(); // 0 = Sunday
+            const dayOfWeekIndex = dateObj.getDay();
             const dayName = DAY_NAMES[dayOfWeekIndex];
             const isSunday = (dayOfWeekIndex === 0);
 
             const dateFormatted = `${TARGET_YEAR}-${String(TARGET_MONTH + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
             const displayDateStr = `${String(dayNum).padStart(2, '0')}/07/${TARGET_YEAR}`;
-
             const existingReg = registrations[dateFormatted];
-
-            if (!isSunday) totalWorkingDays++;
-            if (existingReg) registeredCount++;
 
             // Apply Filters & Search
             if (activeFilter === 'available' && (isSunday || existingReg)) continue;
@@ -300,11 +316,10 @@
                 if (!matchDay && !matchEmp) continue;
             }
 
-            // Create Day Card DOM Element
             const card = document.createElement('div');
             card.className = `day-card ${isSunday ? 'is-sunday' : ''}`;
 
-            // Left Section: Date Box & Name
+            // Left Date Info
             let dateHtml = `
                 <div class="day-info">
                     <div class="date-box">
@@ -318,7 +333,7 @@
                 </div>
             `;
 
-            // Middle Section: Status Details
+            // Middle Info
             let detailsHtml = '';
             if (isSunday) {
                 detailsHtml = `
@@ -335,7 +350,7 @@
                             <i class="fa-solid fa-circle-check"></i>
                             <div>
                                 <div class="emp-code-name">${escapeHtml(existingReg.empCode)} - ${escapeHtml(existingReg.empName)}</div>
-                                ${existingReg.note ? `<div style="font-size:12px; color:#047857;">Ghi chú: ${escapeHtml(existingReg.note)}</div>` : ''}
+                                ${existingReg.note ? `<div style="font-size:12px; color:#a7f3d0;">Ghi chú: ${escapeHtml(existingReg.note)}</div>` : ''}
                                 <div class="reg-time-stamp">Đã đăng ký lúc: ${existingReg.time || 'N/A'}</div>
                             </div>
                         </div>
@@ -349,10 +364,10 @@
                 `;
             }
 
-            // Right Section: Action Button
+            // Right Action Button
             let actionHtml = '';
             if (isSunday) {
-                actionHtml = `<button class="btn btn-outline btn-sm" disabled style="opacity:0.5; cursor:not-allowed;"><i class="fa-solid fa-lock"></i> Khóa</button>`;
+                actionHtml = `<button class="btn btn-outline btn-sm" disabled style="opacity:0.4; cursor:not-allowed;"><i class="fa-solid fa-lock"></i> Khóa</button>`;
             } else if (existingReg) {
                 actionHtml = `
                     <button class="btn btn-danger btn-sm btn-cancel-reg" data-date="${dateFormatted}">
@@ -360,9 +375,8 @@
                     </button>
                 `;
             } else {
-                const canRegister = isWithinTimeWindow();
                 actionHtml = `
-                    <button class="btn btn-primary btn-sm btn-open-reg" data-date="${dateFormatted}" data-title="${dayName}, Ngày ${displayDateStr}" ${!canRegister ? 'disabled title="Ngoài thời gian đăng ký"' : ''}>
+                    <button class="btn btn-primary btn-glow btn-sm btn-open-reg" data-date="${dateFormatted}" data-title="${dayName}, Ngày ${displayDateStr}">
                         <i class="fa-solid fa-plus"></i> Đăng Ký
                     </button>
                 `;
@@ -371,17 +385,14 @@
             card.innerHTML = dateHtml + detailsHtml + actionHtml;
             daysListEl.appendChild(card);
         }
-
-        displayRegCount.textContent = `${registeredCount} / ${totalWorkingDays} ngày làm việc`;
     }
 
     function updateDashboardStats() {
-        displayEmpCount.textContent = `${employees.length} nhân viên`;
         empTableCount.textContent = employees.length;
     }
 
     // ----------------------------------------------------------------------
-    // 7. Event Handlers & Registration Flow
+    // 7. Event Handlers & Passcode Lock (Cuong@032)
     // ----------------------------------------------------------------------
     function setupEventListeners() {
         // Search & Filter
@@ -399,20 +410,43 @@
             });
         });
 
+        // Click Key Icon Button -> Open Password Modal
+        btnAdminKey.addEventListener('click', () => {
+            adminPassInput.value = '';
+            passErrorMsg.style.display = 'none';
+            openModal(passwordModal);
+            setTimeout(() => adminPassInput.focus(), 150);
+        });
+
+        closePasswordModal.addEventListener('click', () => closeModal(passwordModal));
+        btnCancelPass.addEventListener('click', () => closeModal(passwordModal));
+
+        // Password Verification Form Submit (Cuong@032)
+        passwordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const inputPass = adminPassInput.value.trim();
+
+            if (inputPass === ADMIN_PASSCODE) {
+                closeModal(passwordModal);
+                openModal(adminModal);
+                showToast('Xác thực mật khẩu Trưởng nhóm thành công!', 'success');
+            } else {
+                passErrorMsg.style.display = 'flex';
+                adminPassInput.focus();
+                adminPassInput.select();
+                showToast('Mật khẩu không chính xác!', 'error');
+            }
+        });
+
         // Open Register Modal
         daysListEl.addEventListener('click', (e) => {
             const regBtn = e.target.closest('.btn-open-reg');
             if (regBtn) {
-                if (!isWithinTimeWindow()) {
-                    showToast('Hiện tại không nằm trong khung giờ được phép đăng ký!', 'error');
-                    return;
-                }
                 const dateFormatted = regBtn.dataset.date;
                 const titleStr = regBtn.dataset.title;
 
-                // DOUBLE CHECK IF ALREADY REGISTERED BY ANOTHER USER
                 if (registrations[dateFormatted]) {
-                    showToast(`Rất tiếc! Ngày ${dateFormatted} vừa được người khác đăng ký xong.`, 'error');
+                    showToast(`Rất tiếc! Ngày ${dateFormatted} đã được người khác đăng ký trước.`, 'error');
                     renderDaysList();
                     return;
                 }
@@ -434,21 +468,19 @@
                         supabaseClient.from('registrations').delete().eq('date_str', dateFormatted);
                     }
                     renderDaysList();
-                    showToast(`Đã hủy đăng ký ngày ${dateFormatted}`, 'info');
+                    showToast(`Đã hủy lượt đăng ký ngày ${dateFormatted}`, 'info');
                 }
             }
         });
 
-        // Close Register Modal
         closeRegisterModal.addEventListener('click', () => closeModal(registerModal));
         btnCancelRegister.addEventListener('click', () => closeModal(registerModal));
 
-        // Submit Registration
+        // Submit Employee Registration (1 Person Per Day Rule)
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const dateStr = modalDateInput.value;
-            const selectedEmpVal = selectEmployee.value; // Format: "NV001|Nguyễn Văn An"
+            const selectedEmpVal = selectEmployee.value;
             const noteVal = regNote.value.trim();
 
             if (!selectedEmpVal) {
@@ -456,10 +488,10 @@
                 return;
             }
 
-            // RE-VERIFY 1 EMPLOYEE PER DAY RULE
+            // Lock Check
             if (registrations[dateStr]) {
                 const existing = registrations[dateStr];
-                showToast(`Đã có người khác đăng ký trước! Ngày ${dateStr} đã được đăng ký bởi ${existing.empCode} - ${existing.empName}.`, 'error');
+                showToast(`Đã có người đăng ký trước! Ngày ${dateStr} đã thuộc về ${existing.empCode} - ${existing.empName}.`, 'error');
                 closeModal(registerModal);
                 renderDaysList();
                 return;
@@ -468,7 +500,6 @@
             const [empCode, empName] = selectedEmpVal.split('|');
             const nowStr = new Date().toLocaleString('vi-VN');
 
-            // Save to state & LocalStorage
             registrations[dateStr] = {
                 empCode,
                 empName,
@@ -478,7 +509,6 @@
 
             saveData();
 
-            // Push to Supabase if connected
             if (supabaseClient) {
                 try {
                     await supabaseClient.from('registrations').insert([
@@ -491,14 +521,12 @@
 
             closeModal(registerModal);
             renderDaysList();
-            showToast(`Đăng ký thành công cho ${empCode} - ${empName} vào ngày ${dateStr}!`, 'success');
+            showToast(`Đăng ký thành công cho ${empCode} - ${empName}!`, 'success');
         });
 
-        // Admin Modal Controls
-        btnAdminModal.addEventListener('click', () => openModal(adminModal));
+        // Admin Controls
         closeAdminModal.addEventListener('click', () => closeModal(adminModal));
 
-        // Admin Tabs switching
         tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 tabBtns.forEach(b => b.classList.remove('active'));
@@ -508,18 +536,18 @@
             });
         });
 
-        // Admin Add Employee
+        // Add Employee
         btnAddEmployee.addEventListener('click', () => {
             const code = newEmpId.value.trim().toUpperCase();
             const name = newEmpName.value.trim();
 
             if (!code || !name) {
-                showToast('Vui lòng nhập đầy đủ Mã NV và Tên NV!', 'warning');
+                showToast('Vui lòng nhập Mã NV và Tên NV!', 'warning');
                 return;
             }
 
             if (employees.some(e => e.code === code)) {
-                showToast(`Mã nhân viên ${code} đã tồn tại trong hệ thống!`, 'error');
+                showToast(`Mã nhân viên ${code} đã tồn tại!`, 'error');
                 return;
             }
 
@@ -533,12 +561,12 @@
             showToast(`Đã thêm nhân viên ${code} - ${name}`, 'success');
         });
 
-        // Admin Delete Employee
+        // Delete Employee
         empTableBody.addEventListener('click', (e) => {
             const delBtn = e.target.closest('.btn-del-emp');
             if (delBtn) {
                 const code = delBtn.dataset.code;
-                if (confirm(`Bạn có chắc chắn muốn xóa nhân viên ${code} khỏi danh sách cấu hình?`)) {
+                if (confirm(`Bạn có chắc chắn xóa nhân viên ${code}?`)) {
                     employees = employees.filter(e => e.code !== code);
                     saveData();
                     renderEmployeeDropdown();
@@ -549,15 +577,14 @@
             }
         });
 
-        // Save Time Range Config
+        // Save Time Window Config
         btnSaveTimeConfig.addEventListener('click', () => {
             appConfig.startTime = startTimeInput.value;
             appConfig.endTime = endTimeInput.value;
             appConfig.isOpenAlways = false;
             saveData();
-            checkRegistrationTimeWindow();
-            renderDaysList();
-            showToast('Đã lưu cấu hình khung thời gian đăng ký!', 'success');
+            checkTimeAndTicker();
+            showToast('Đã lưu cấu hình thời gian đăng ký!', 'success');
         });
 
         btnSetOpenNow.addEventListener('click', () => {
@@ -567,14 +594,13 @@
             startTimeInput.value = '';
             endTimeInput.value = '';
             saveData();
-            checkRegistrationTimeWindow();
-            renderDaysList();
-            showToast('Đã mở đăng ký tự do không giới hạn thời gian!', 'info');
+            checkTimeAndTicker();
+            showToast('Đã mở đăng ký tự do!', 'info');
         });
 
-        // Clear All Registrations
+        // Clear All
         btnClearAllRegs.addEventListener('click', () => {
-            if (confirm('CẢNH BÁO: Hành động này sẽ XÓA TẤT CẢ LƯỢT ĐĂNG KÝ của Tháng 7/2026. Bạn có chắc chắn không?')) {
+            if (confirm('CẢNH BÁO: Xóa tất cả lượt đăng ký nghỉ phép Tháng 7/2026?')) {
                 registrations = {};
                 saveData();
                 if (supabaseClient) {
@@ -585,13 +611,13 @@
             }
         });
 
-        // Save Supabase Config
+        // Save Supabase
         btnSaveSupabase.addEventListener('click', () => {
             supabaseConfig.url = supabaseUrl.value.trim();
             supabaseConfig.key = supabaseKey.value.trim();
             localStorage.setItem(STORAGE_SUPABASE, JSON.stringify(supabaseConfig));
             initSupabaseIfConfigured();
-            showToast('Đã lưu thông tin cấu hình Supabase!', 'success');
+            showToast('Đã lưu cấu hình Supabase!', 'success');
         });
 
         btnDisconnectSupabase.addEventListener('click', () => {
@@ -601,15 +627,14 @@
             supabaseKey.value = '';
             supabaseClient = null;
             initSupabaseIfConfigured();
-            showToast('Đã ngắt kết nối Supabase. Chuyển về LocalStorage mode.', 'info');
+            showToast('Đã ngắt kết nối Supabase Cloud.', 'info');
         });
 
-        // Export to Excel / CSV
         btnExportExcel.addEventListener('click', exportToCSV);
     }
 
     // ----------------------------------------------------------------------
-    // 8. Dynamic Renders
+    // 8. Renders & Helpers
     // ----------------------------------------------------------------------
     function renderEmployeeDropdown() {
         selectEmployee.innerHTML = '<option value="">-- Chọn Mã Nhân Viên - Tên Nhân Viên --</option>';
@@ -624,7 +649,7 @@
     function renderAdminEmployeeTable() {
         empTableBody.innerHTML = '';
         if (employees.length === 0) {
-            empTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Chưa có nhân viên nào trong cấu hình.</td></tr>';
+            empTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Chưa có nhân viên nào trong danh sách.</td></tr>';
             return;
         }
 
@@ -644,9 +669,8 @@
         });
     }
 
-    // Export Excel CSV
     function exportToCSV() {
-        let csvContent = "\uFEFF"; // UTF-8 BOM for Excel Vietnamese Unicode support
+        let csvContent = "\uFEFF";
         csvContent += "STT,Ngày Đăng Ký,Thứ,Mã Nhân Viên,Tên Nhân Viên,Ghi Chú,Thời Gian Đăng Ký\n";
 
         let count = 0;
@@ -666,7 +690,7 @@
         }
 
         if (count === 0) {
-            showToast('Chưa có dữ liệu đăng ký nào để xuất Excel!', 'warning');
+            showToast('Chưa có lượt đăng ký nào để xuất Excel!', 'warning');
             return;
         }
 
@@ -681,16 +705,9 @@
         showToast(`Đã xuất file Excel gồm ${count} lượt đăng ký!`, 'success');
     }
 
-    // Modal Helpers
-    function openModal(modalEl) {
-        modalEl.classList.add('active');
-    }
+    function openModal(modalEl) { modalEl.classList.add('active'); }
+    function closeModal(modalEl) { modalEl.classList.remove('active'); }
 
-    function closeModal(modalEl) {
-        modalEl.classList.remove('active');
-    }
-
-    // Toast Notifications
     function showToast(message, type = 'info') {
         const toastContainer = document.getElementById('toastContainer');
         const toast = document.createElement('div');
@@ -721,6 +738,5 @@
             .replace(/'/g, "&#039;");
     }
 
-    // Launch Application
     document.addEventListener('DOMContentLoaded', init);
 })();
