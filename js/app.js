@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   JavaScript Application Core (With Interactive User Guide Modal)
+   JavaScript Application Core (Global Cloud Sync & Default Supabase Pre-Config)
    ========================================================================== */
 
 (function () {
@@ -59,10 +59,16 @@
         isOpenAlways: true
     };
 
+    // Pre-configured Supabase Project URL (Auto-sync for all external devices)
+    const DEFAULT_SUPABASE = {
+        url: 'https://duyttscaoezluyhvwnud.supabase.co',
+        key: ''
+    };
+
     let employees = [];
     let registrations = {};
     let appConfig = { ...DEFAULT_CONFIG };
-    let supabaseConfig = { url: '', key: '' };
+    let supabaseConfig = { ...DEFAULT_SUPABASE };
     let supabaseClient = null;
     let activeFilter = 'all';
     let searchQuery = '';
@@ -188,11 +194,17 @@
 
         let savedSupa = localStorage.getItem(STORAGE_SUPABASE) || localStorage.getItem('leave_app_supabase_v8') || localStorage.getItem('leave_app_supabase_v5');
         if (savedSupa) {
-            supabaseConfig = JSON.parse(savedSupa);
-            supabaseConfig.url = sanitizeSupabaseUrl(supabaseConfig.url);
-            supabaseUrl.value = supabaseConfig.url || '';
-            supabaseKey.value = supabaseConfig.key || '';
+            const parsed = JSON.parse(savedSupa);
+            supabaseConfig = {
+                url: sanitizeSupabaseUrl(parsed.url) || DEFAULT_SUPABASE.url,
+                key: parsed.key || DEFAULT_SUPABASE.key
+            };
+        } else {
+            supabaseConfig = { ...DEFAULT_SUPABASE };
         }
+
+        supabaseUrl.value = supabaseConfig.url || DEFAULT_SUPABASE.url;
+        supabaseKey.value = supabaseConfig.key || '';
 
         configMonthSelect.value = String(appConfig.targetMonth ?? 6);
         configYearSelect.value = String(appConfig.targetYear ?? 2026);
@@ -226,10 +238,10 @@
     }
 
     // ----------------------------------------------------------------------
-    // 4. Supabase Cloud Sync
+    // 4. Supabase Cloud Sync (Auto-Sync for All External Devices)
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
-        const cleanUrl = sanitizeSupabaseUrl(supabaseConfig.url);
+        const cleanUrl = sanitizeSupabaseUrl(supabaseConfig.url || DEFAULT_SUPABASE.url);
 
         if (window.supabase && cleanUrl && supabaseConfig.key) {
             try {
@@ -243,7 +255,7 @@
         } else {
             supabaseStatusAlert.innerHTML = `
                 <div class="alert alert-warning" style="background:#f8fafc; border-color:#cbd5e1; color:#64748b; padding:10px; border-radius:8px;">
-                    <i class="fa-solid fa-circle-info"></i> Đang chạy ở chế độ <b>Local Demo</b>. Thêm URL & Key để bật Cloud Realtime.
+                    <i class="fa-solid fa-circle-info"></i> Đang chờ Trưởng Nhóm lưu **Supabase Anon Key** để kích hoạt Cloud Realtime tự động cho tất cả nhân viên.
                 </div>`;
         }
     }
@@ -259,7 +271,7 @@
             if (data) {
                 supabaseStatusAlert.innerHTML = `
                     <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d; padding:10px; border-radius:8px;">
-                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công!
+                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công! Dữ liệu đang được đồng bộ trực tuyến giữa tất cả các thiết bị.
                     </div>`;
 
                 const cloudRegs = {};
@@ -846,21 +858,22 @@
 
     function showToast(message, type = 'info') {
         const toastContainer = document.getElementById('toastContainer');
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
+        const toast.createElement ? null : null;
+        const toastEl = document.createElement('div');
+        toastEl.className = `toast toast-${type}`;
 
         let icon = 'fa-info-circle';
         if (type === 'success') icon = 'fa-circle-check';
         if (type === 'error') icon = 'fa-circle-exclamation';
         if (type === 'warning') icon = 'fa-triangle-exclamation';
 
-        toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHtml(message)}</span>`;
-        toastContainer.appendChild(toast);
+        toastEl.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHtml(message)}</span>`;
+        toastContainer.appendChild(toastEl);
 
         setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(10px)';
-            setTimeout(() => toast.remove(), 300);
+            toastEl.style.opacity = '0';
+            toastEl.style.transform = 'translateY(10px)';
+            setTimeout(() => toastEl.remove(), 300);
         }, 4000);
     }
 
