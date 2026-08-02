@@ -42,6 +42,11 @@
             </div>
 
             <div class="header-actions">
+                <!-- User Guide Button Header -->
+                <button class="btn btn-outline btn-sm header-guide-btn" id="btnHeaderGuide">
+                    <i class="fa-solid fa-circle-question"></i> Hướng Dẫn
+                </button>
+
                 <!-- Admin Lock Key Button -->
                 <button class="key-btn apple-key-btn" id="btnAdminKey" title="Cấu Hình Trưởng Nhóm">
                     <i class="fa-solid fa-key"></i>
@@ -114,10 +119,100 @@
                         <span class="clock-label">GIÂY</span>
                     </div>
                 </div>
+
+                <!-- User Guide Action Button inside Countdown Card -->
+                <div class="cd-guide-box">
+                    <button class="btn btn-primary cd-guide-btn" id="btnCountdownGuide">
+                        <i class="fa-solid fa-book-open"></i> Hướng Dẫn Sử Dụng
+                    </button>
+                </div>
             </div>
         </div>
 
     </main>
+
+    <!-- Modal: User Guide (Hướng Dẫn Sử Dụng Cho Người Dùng) -->
+    <div class="modal-overlay" id="guideModal">
+        <div class="modal-content modal-large apple-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-book-open"></i> Hướng Dẫn Đăng Ký Nghỉ Phép</h3>
+                <button class="close-btn" id="closeGuideModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                
+                <div class="guide-welcome-banner">
+                    <div class="guide-banner-icon"><i class="fa-solid fa-lightbulb"></i></div>
+                    <div>
+                        <h4>Đăng ký nghỉ phép nhanh chóng chỉ với 3 bước đơn giản!</h4>
+                        <p>Quy tắc: Mỗi ngày chỉ cho phép **tối đa 01 nhân viên** chọn nghỉ phép.</p>
+                    </div>
+                </div>
+
+                <!-- Step-by-Step Visual Workflow Cards -->
+                <div class="guide-steps-grid">
+                    
+                    <!-- Step 1 -->
+                    <div class="guide-step-card">
+                        <div class="step-badge">Bước 1</div>
+                        <div class="step-illustration step-illus-blue">
+                            <div class="illus-card-mock">
+                                <div class="mock-top"><span>15/07</span><span>Thứ Tư</span></div>
+                                <div class="mock-body"><i class="fa-regular fa-circle"></i> Chưa chọn</div>
+                            </div>
+                        </div>
+                        <h5>1. Chọn Ngày Cần Nghỉ</h5>
+                        <p>Chạm hoặc bấm trực tiếp vào bất kỳ ô thẻ màu xanh dương hiển thị ngày bạn mong muốn xin nghỉ phép.</p>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="guide-step-card">
+                        <div class="step-badge">Bước 2</div>
+                        <div class="step-illustration step-illus-cards">
+                            <div class="mock-emp-chip mock-emp-selected">
+                                <div class="mock-avatar">AN</div>
+                                <span>NV001 - Văn An</span>
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                        </div>
+                        <h5>2. Chạm Chọn Thẻ Tên Bạn</h5>
+                        <p>Hộp thoại bật ra, chạm vào đúng Thẻ Tên Nhân Viên của bạn. Thẻ được chọn sẽ xuất hiện tích v xanh lá.</p>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="guide-step-card">
+                        <div class="step-badge">Bước 3</div>
+                        <div class="step-illustration step-illus-green">
+                            <div class="illus-card-mock mock-green">
+                                <div class="mock-top"><span>15/07</span><span>Thứ Tư</span></div>
+                                <div class="mock-body"><i class="fa-solid fa-user-check"></i> NV001 - Văn An</div>
+                            </div>
+                        </div>
+                        <h5>3. Bấm Nút "Lưu"</h5>
+                        <p>Bấm nút **Lưu** để hoàn tất. Thẻ sẽ chuyển sang màu xanh lá hiển thị tên của bạn cho toàn bộ đồng nghiệp thấy.</p>
+                    </div>
+
+                </div>
+
+                <!-- Note Rules Box -->
+                <div class="guide-rules-card">
+                    <h5><i class="fa-solid fa-shield-halved"></i> Quy Tắc & Lưu Ý Quan Trọng</h5>
+                    <ul>
+                        <li><span class="dot dot-available"></span> <strong>Thẻ Xanh Dương</strong>: Ngày còn trống, bạn có thể bấm vào để chọn.</li>
+                        <li><span class="dot dot-registered"></span> <strong>Thẻ Xanh Lá</strong>: Ngày đã có người khác chọn trước (không chọn chồng chéo).</li>
+                        <li><span class="dot dot-sunday"></span> <strong>Thẻ Đỏ (Chủ Nhật)</strong>: Ngày nghỉ định kỳ hàng tuần, hệ thống khóa tự động.</li>
+                        <li>🔒 <strong>Bảo mật thông tin</strong>: Để tránh trường hợp nhân viên hủy nhầm của nhau, việc hủy lượt đăng ký chỉ được thực hiện bởi Trưởng Nhóm.</li>
+                    </ul>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="btnCloseGuideSubmit">
+                        <i class="fa-solid fa-check"></i> Đã Hiểu, Đóng Hướng Dẫn
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
     <!-- Modal: Password Auth for Admin -->
     <div class="modal-overlay" id="passwordModal">
@@ -149,7 +244,7 @@
         </div>
     </div>
 
-    <!-- Modal: Register Leave (Employee - Modern Colorful Card Selector Grid) -->
+    <!-- Modal: Register Leave (Employee) -->
     <div class="modal-overlay" id="registerModal">
         <div class="modal-content apple-card">
             <div class="modal-header">
@@ -171,7 +266,6 @@
                     
                     <div class="form-group">
                         <label class="emp-grid-label"><i class="fa-solid fa-user-check"></i> Danh Sách Thẻ Nhân Viên:</label>
-                        <!-- Dynamic Colorful Employee Cards Grid -->
                         <div class="emp-card-grid" id="empCardGrid">
                             <!-- Dynamic Cards rendered by app.js -->
                         </div>

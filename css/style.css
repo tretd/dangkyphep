@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   Apple Minimalist Premium Design System (Fixed Banner & Colorful Cards)
+   Apple Minimalist Premium Design System (With User Guide Modal)
    ========================================================================== */
 
 :root {
@@ -48,11 +48,11 @@ body.apple-theme {
     color: var(--apple-text);
     line-height: 1.4;
     min-height: 100vh;
-    padding-top: 34px; /* Offset for fixed top banner */
+    padding-top: 34px;
     -webkit-font-smoothing: antialiased;
 }
 
-/* FIXED TOP STATUS BANNER (Dải băng treo cố định trên cùng màn hình) */
+/* FIXED TOP STATUS BANNER */
 .top-status-banner {
     position: fixed;
     top: 0;
@@ -171,6 +171,21 @@ body.apple-theme {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.header-guide-btn {
+    border-radius: var(--radius-pill);
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0284c7;
+    border-color: #bae6fd;
+    background: #f0f9ff;
+}
+
+.header-guide-btn:hover {
+    background: #0284c7;
+    color: #ffffff;
 }
 
 .apple-key-btn {
@@ -369,10 +384,7 @@ body.apple-theme {
     background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
 }
 
-.compact-card.card-blue:active {
-    transform: scale(0.98);
-}
-
+.compact-card.card-blue:active { transform: scale(0.98); }
 .compact-card.card-blue .card-date-badge { color: var(--blue-date-color); }
 .compact-card.card-blue .card-day-name { color: var(--blue-day-color); }
 .compact-card.card-blue .card-body-text { color: #0284c7; font-weight: 500; font-size: 12px; }
@@ -400,80 +412,35 @@ body.apple-theme {
 .compact-card.card-red .card-date-badge { color: var(--red-date-color); }
 .compact-card.card-red .card-day-name { color: var(--red-day-color); }
 
-/* ==========================================================================
-   CUSTOM COLORFUL EMPLOYEE CARD SELECTOR GRID
-   ========================================================================== */
-.emp-grid-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #334155;
-    margin-bottom: 8px;
-    display: block;
-}
+/* CUSTOM COLORFUL EMPLOYEE CARD SELECTOR GRID */
+.emp-grid-label { font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; display: block; }
 
 .emp-card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px;
-    max-height: 260px;
-    overflow-y: auto;
-    padding: 4px;
+    gap: 10px; max-height: 260px; overflow-y: auto; padding: 4px;
 }
 
 .emp-select-card {
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 2px solid transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 12px;
-    font-weight: 700;
-    transition: var(--transition);
-    user-select: none;
+    padding: 10px 12px; border-radius: 12px; border: 2px solid transparent;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; font-size: 12px; font-weight: 700; transition: var(--transition); user-select: none;
 }
 
-.emp-select-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.emp-info-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
+.emp-select-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+.emp-info-wrapper { display: flex; align-items: center; gap: 8px; }
 .emp-avatar-badge {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 800;
+    width: 28px; height: 28px; border-radius: 50%; background: rgba(255, 255, 255, 0.6);
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;
 }
-
-.emp-check-icon {
-    display: none;
-    font-size: 14px;
-}
-
+.emp-check-icon { display: none; font-size: 14px; }
 .emp-select-card.selected {
     border-color: #0284c7 !important;
     box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25), 0 6px 16px rgba(2, 132, 199, 0.2);
     transform: scale(1.02);
 }
+.emp-select-card.selected .emp-check-icon { display: block; }
 
-.emp-select-card.selected .emp-check-icon {
-    display: block;
-}
-
-/* Pastel Themes for Employee Cards */
 .emp-theme-0 { background: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
 .emp-theme-1 { background: #f0fdf4; color: #15803d; border-color: #86efac; }
 .emp-theme-2 { background: #faf5ff; color: #7e22ce; border-color: #e9d5ff; }
@@ -484,22 +451,13 @@ body.apple-theme {
 
 /* BUTTONS */
 .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 7px 16px;
-    border-radius: var(--radius-pill);
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    border: none;
-    transition: var(--transition);
-    text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 7px 16px; border-radius: var(--radius-pill); font-size: 13px;
+    font-weight: 700; cursor: pointer; border: none; transition: var(--transition); text-decoration: none;
 }
 
 .btn-primary { background: #0284c7; color: #ffffff; }
-.btn-primary:hover { background: #0369a1; }
+.btn-primary:hover { background: #0369a1; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3); }
 .btn-secondary { background: #e2e8f0; color: #334155; }
 .btn-secondary:hover { background: #cbd5e1; }
 .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: #475569; }
@@ -508,10 +466,9 @@ body.apple-theme {
 .btn-danger:hover { background: #be123c; }
 .btn-sm { padding: 4px 10px; font-size: 12px; width: auto; }
 
-/* COUNTDOWN OVERLAY */
+/* COUNTDOWN OVERLAY & USER GUIDE BUTTON */
 .countdown-overlay {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     min-height: 480px; z-index: 50;
     display: flex; align-items: flex-start; justify-content: center;
     padding-top: 30px;
@@ -547,12 +504,115 @@ body.apple-theme {
 .countdown-card h2 { font-size: 19px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
 .cd-desc { font-size: 12px; color: #64748b; margin-bottom: 16px; }
 
-.clock-container { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.clock-container { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; }
 .clock-unit { background: #f0f9ff; border: 1px solid #bae6fd; padding: 10px 12px; border-radius: 12px; min-width: 60px; }
 .clock-num { display: block; font-size: 24px; font-weight: 800; color: #0284c7; line-height: 1; font-family: monospace; }
 .clock-label { display: block; font-size: 9px; font-weight: 700; color: #0369a1; margin-top: 3px; }
 .clock-colon { font-size: 20px; font-weight: 800; color: #0284c7; margin-bottom: 8px; }
-.cd-footer-info { font-size: 11px; color: #64748b; background: #f1f5f9; padding: 5px 14px; border-radius: var(--radius-pill); display: inline-block; }
+
+.cd-guide-box { margin-top: 10px; }
+.cd-guide-btn {
+    padding: 9px 22px;
+    font-size: 13px;
+    border-radius: var(--radius-pill);
+    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.3);
+}
+
+/* ==========================================================================
+   USER GUIDE MODAL STYLING (HƯỚNG DẪN 3 BƯỚC VỚI HÌNH MINH HỌA)
+   ========================================================================== */
+.guide-welcome-banner {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #bae6fd;
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.guide-banner-icon {
+    width: 42px; height: 42px; background: #0284c7; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #ffffff; flex-shrink: 0;
+}
+
+.guide-welcome-banner h4 { font-size: 15px; font-weight: 800; color: #0369a1; margin-bottom: 2px; }
+.guide-welcome-banner p { font-size: 12px; color: #334155; }
+
+.guide-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.guide-step-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+    position: relative;
+}
+
+.step-badge {
+    position: absolute; top: 10px; left: 10px;
+    background: #0284c7; color: #ffffff;
+    padding: 2px 8px; border-radius: var(--radius-pill);
+    font-size: 10px; font-weight: 800; text-transform: uppercase;
+}
+
+.step-illustration {
+    height: 80px;
+    margin: 14px 0 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 8px;
+}
+
+.illus-card-mock {
+    width: 100%; max-width: 130px;
+    background: #f0f9ff; border: 1.5px solid #bae6fd;
+    border-radius: 8px; padding: 6px; text-align: left;
+    font-size: 11px;
+}
+
+.mock-top { display: flex; justify-content: space-between; font-weight: 800; color: #0369a1; margin-bottom: 4px; font-size: 10px; }
+.mock-body { font-size: 10px; color: #0284c7; display: flex; align-items: center; gap: 4px; }
+
+.mock-green { background: #f0fdf4 !important; border-color: #86efac !important; }
+.mock-green .mock-top { color: #15803d !important; }
+.mock-green .mock-body { color: #14532d !important; font-weight: 700; }
+
+.mock-emp-chip {
+    background: #f0f9ff; border: 1.5px solid #0284c7;
+    border-radius: var(--radius-pill); padding: 4px 10px;
+    display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #0284c7;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);
+}
+
+.mock-avatar { width: 18px; height: 18px; background: #0284c7; color: #ffffff; border-radius: 50%; font-size: 9px; display: flex; align-items: center; justify-content: center; }
+
+.guide-step-card h5 { font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+.guide-step-card p { font-size: 11px; color: #64748b; line-height: 1.3; }
+
+.guide-rules-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 12px;
+}
+
+.guide-rules-card h5 { font-size: 13px; font-weight: 800; color: #334155; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.guide-rules-card ul { list-style: none; display: flex; flex-direction: column; gap: 6px; color: #475569; }
+.guide-rules-card li { display: flex; align-items: center; gap: 8px; }
 
 /* MODALS */
 .modal-overlay {
@@ -659,4 +719,5 @@ body.apple-theme {
     .days-grid-compact { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
     .apple-tab-bar { grid-template-columns: repeat(2, 1fr); gap: 4px; }
     .emp-card-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .guide-steps-grid { grid-template-columns: 1fr; }
 }

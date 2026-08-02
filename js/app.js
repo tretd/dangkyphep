@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   JavaScript Application Core (No "Hệ Thống" Word Prefix)
+   JavaScript Application Core (With Interactive User Guide Modal)
    ========================================================================== */
 
 (function () {
@@ -90,6 +90,13 @@
     const cdHours = document.getElementById('cdHours');
     const cdMins = document.getElementById('cdMins');
     const cdSecs = document.getElementById('cdSecs');
+    const btnCountdownGuide = document.getElementById('btnCountdownGuide');
+
+    // User Guide Modal
+    const btnHeaderGuide = document.getElementById('btnHeaderGuide');
+    const guideModal = document.getElementById('guideModal');
+    const closeGuideModal = document.getElementById('closeGuideModal');
+    const btnCloseGuideSubmit = document.getElementById('btnCloseGuideSubmit');
 
     // Key & Passcode Modal
     const btnAdminKey = document.getElementById('btnAdminKey');
@@ -275,7 +282,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 5. Countdown Ticker & Fixed Top Status Banner (No "Hệ Thống" Prefix)
+    // 5. Countdown Ticker & Fixed Top Status Banner
     // ----------------------------------------------------------------------
     function startCountdownTicker() {
         if (timerInterval) clearInterval(timerInterval);
@@ -484,6 +491,12 @@
                 renderDaysGrid();
             });
         });
+
+        // User Guide Modal Controls
+        btnHeaderGuide.addEventListener('click', () => openModal(guideModal));
+        btnCountdownGuide.addEventListener('click', () => openModal(guideModal));
+        closeGuideModal.addEventListener('click', () => closeModal(guideModal));
+        btnCloseGuideSubmit.addEventListener('click', () => closeModal(guideModal));
 
         btnAdminKey.addEventListener('click', () => {
             adminPassInput.value = '';
