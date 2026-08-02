@@ -327,6 +327,25 @@
                     { event: '*', schema: 'public' },
                     (payload) => {
                         console.log('⚡ Supabase Realtime Event Received:', payload);
+                        
+                        // Live Toast Notification when another user registers or changes data
+                        if (payload.table === 'registrations') {
+                            if (payload.eventType === 'INSERT' && payload.new) {
+                                const dStr = payload.new.date_str || '';
+                                const parts = dStr.split('-');
+                                const dateFormatted = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dStr;
+                                const empCode = payload.new.emp_code || '';
+                                const empName = payload.new.emp_name || '';
+                                showToast(`🔔 Thông báo: ${empCode} - ${empName} vừa đăng ký nghỉ phép ngày ${dateFormatted}!`, 'success');
+                            } else if (payload.eventType === 'DELETE') {
+                                showToast(`ℹ️ Lượt đăng ký nghỉ phép vừa được cập nhật trên Cloud.`, 'info');
+                            }
+                        } else if (payload.table === 'app_config') {
+                            showToast(`🔔 Cấu hình khung giờ / mở lịch vừa được Trưởng nhóm cập nhật!`, 'info');
+                        } else if (payload.table === 'employees') {
+                            showToast(`🔔 Danh sách nhân viên vừa được cập nhật từ Cloud!`, 'info');
+                        }
+
                         fetchSupabaseData(true);
                     }
                 )
@@ -370,21 +389,29 @@
             }
 
             // 2. Process App Config
-            if (!cfgRes.error && cfgRes.data && cfgRes.data.length > 0) {
-                const cloudCfg = cfgRes.data[0];
-                if (cloudCfg.config_json) {
-                    const parsedCfg = typeof cloudCfg.config_json === 'string' ? JSON.parse(cloudCfg.config_json) : cloudCfg.config_json;
-                    appConfig = { ...appConfig, ...parsedCfg };
-                    configMonthSelect.value = String(appConfig.targetMonth ?? 7);
-                    configYearSelect.value = String(appConfig.targetYear ?? 2026);
-                    startTimeInput.value = appConfig.startTime || '';
-                    endTimeInput.value = appConfig.endTime || '';
+            if (!cfgRes.error && cfgRes.data) {
+                if (cfgRes.data.length > 0) {
+                    const cloudCfg = cfgRes.data[0];
+                    if (cloudCfg.config_json) {
+                        const parsedCfg = typeof cloudCfg.config_json === 'string' ? JSON.parse(cloudCfg.config_json) : cloudCfg.config_json;
+                        appConfig = { ...appConfig, ...parsedCfg };
+                        configMonthSelect.value = String(appConfig.targetMonth ?? 7);
+                        configYearSelect.value = String(appConfig.targetYear ?? 2026);
+                        startTimeInput.value = appConfig.startTime || '';
+                        endTimeInput.value = appConfig.endTime || '';
+                    }
+                } else {
+                    pushConfigToSupabase();
                 }
             }
 
             // 3. Process Employees List
-            if (!empRes.error && empRes.data && empRes.data.length > 0) {
-                employees = empRes.data.map(e => ({ code: e.code, name: e.name }));
+            if (!empRes.error && empRes.data) {
+                if (empRes.data.length > 0) {
+                    employees = empRes.data.map(e => ({ code: e.code, name: e.name }));
+                } else {
+                    pushEmployeesToSupabase();
+                }
             }
 
             supabaseStatusAlert.innerHTML = `
@@ -412,32 +439,41 @@
     }
 
     async function pushConfigToSupabase() {
-        if (!supabaseClient) return;
+        if (!supabaseClient) return false;
         try {
             const { error } = await supabaseClient.from('app_config').upsert([
                 { id: 1, config_json: appConfig, updated_at: new Date().toISOString() }
             ]);
             if (error) {
                 console.error('Push config error:', error);
-                showToast('Lỗi lưu cấu hình lên Cloud: ' + error.message, 'warning');
+                showToast(`Lỗi lưu cấu hình lên Cloud: ${error.message}. Bạn cần dán mã SQL vào Supabase.com!`, 'error');
+                return false;
             }
+            return true;
         } catch (e) {
             console.warn('Push config exception:', e);
+            return false;
         }
     }
 
     async function pushEmployeesToSupabase() {
-        if (!supabaseClient) return;
+        if (!supabaseClient) return false;
         try {
             await supabaseClient.from('employees').delete().neq('code', '');
             if (employees.length > 0) {
                 const { error } = await supabaseClient.from('employees').insert(
                     employees.map(e => ({ code: e.code, name: e.name }))
                 );
-                if (error) console.error('Push employees error:', error);
+                if (error) {
+                    console.error('Push employees error:', error);
+                    showToast(`Lỗi lưu danh sách NV lên Cloud: ${error.message}`, 'error');
+                    return false;
+                }
             }
+            return true;
         } catch (e) {
             console.warn('Push employees exception:', e);
+            return false;
         }
     }
 
@@ -856,16 +892,30 @@
         });
 
         btnSaveTimeConfig.addEventListener('click', async () => {
-            appConfig.targetMonth = parseInt(configMonthSelect.value, 10);
-            appConfig.targetYear = parseInt(configYearSelect.value, 10);
-            appConfig.startTime = startTimeInput.value;
-            appConfig.endTime = endTimeInput.value;
-            appConfig.isOpenAlways = false;
+            const newConfig = {
+                targetMonth: parseInt(configMonthSelect.value, 10),
+                targetYear: parseInt(configYearSelect.value, 10),
+                startTime: startTimeInput.value,
+                endTime: endTimeInput.value,
+                isOpenAlways: false
+            };
+
+            const oldConfig = { ...appConfig };
+            appConfig = { ...appConfig, ...newConfig };
+
+            if (supabaseClient) {
+                updateCloudBadge('syncing', 'Đang lưu...');
+                const ok = await pushConfigToSupabase();
+                if (!ok) {
+                    appConfig = oldConfig;
+                    saveData();
+                    updateCloudBadge('offline', 'Lỗi Cloud');
+                    return;
+                }
+                updateCloudBadge('online', 'Cloud Realtime');
+            }
 
             saveData();
-            updateCloudBadge('syncing', 'Đang lưu...');
-            await pushConfigToSupabase();
-            updateCloudBadge('online', 'Cloud Realtime');
             updateMonthUIHeaders();
             renderDaysGrid();
             checkTimeAndTicker();
@@ -873,6 +923,7 @@
         });
 
         btnSetOpenNow.addEventListener('click', async () => {
+            const oldConfig = { ...appConfig };
             appConfig.targetMonth = parseInt(configMonthSelect.value, 10);
             appConfig.targetYear = parseInt(configYearSelect.value, 10);
             appConfig.isOpenAlways = true;
@@ -881,10 +932,19 @@
             startTimeInput.value = '';
             endTimeInput.value = '';
 
+            if (supabaseClient) {
+                updateCloudBadge('syncing', 'Đang lưu...');
+                const ok = await pushConfigToSupabase();
+                if (!ok) {
+                    appConfig = oldConfig;
+                    saveData();
+                    updateCloudBadge('offline', 'Lỗi Cloud');
+                    return;
+                }
+                updateCloudBadge('online', 'Cloud Realtime');
+            }
+
             saveData();
-            updateCloudBadge('syncing', 'Đang lưu...');
-            await pushConfigToSupabase();
-            updateCloudBadge('online', 'Cloud Realtime');
             updateMonthUIHeaders();
             renderDaysGrid();
             checkTimeAndTicker();
@@ -894,18 +954,21 @@
         btnClearAllRegs.addEventListener('click', async () => {
             const mStr = String((appConfig.targetMonth ?? 7) + 1).padStart(2, '0');
             if (confirm(`CẢNH BÁO: Xóa tất cả lượt đăng ký nghỉ phép Tháng ${mStr}/${appConfig.targetYear}?`)) {
-                registrations = {};
-                saveData();
                 if (supabaseClient) {
                     updateCloudBadge('syncing', 'Đang xóa tất cả...');
                     const { error } = await supabaseClient.from('registrations').delete().neq('date_str', '0000-00-00');
                     if (error) {
                         console.error('Clear all error:', error);
-                        showToast('Lỗi xóa trên Cloud: ' + error.message, 'error');
-                    } else {
-                        updateCloudBadge('online', 'Cloud Realtime');
+                        showToast(`Không thể xóa trên Cloud: ${error.message}`, 'error');
+                        updateCloudBadge('offline', 'Lỗi Cloud');
+                        await fetchSupabaseData(true);
+                        return;
                     }
+                    updateCloudBadge('online', 'Cloud Realtime');
                 }
+
+                registrations = {};
+                saveData();
                 renderDaysGrid();
                 renderAdminRegsTable();
                 showToast(`Đã xóa toàn bộ dữ liệu đăng ký Tháng ${mStr}/${appConfig.targetYear}!`, 'info');

@@ -1,5 +1,5 @@
 -- ==========================================================================
--- HƯỚNG DẪN TẠO BẢNG SUPABASE CHO TOOL ĐĂNG KÝ NGHỈ PHÉP (REALTIME CLOUD SYNC)
+-- HƯỚNG DẪN TẠO BẢNG SUPABASE CHO TOOL ĐĂNG KÝ NGHỈ PHÉP (FULL REALTIME CLOUD)
 -- Copy và dán toàn bộ đoạn code này vào mục "SQL Editor" trên trang Supabase.com
 -- ==========================================================================
 
@@ -26,12 +26,12 @@ CREATE TABLE IF NOT EXISTS employees (
     created_at VARCHAR(100)
 );
 
--- 4. Đặt quyền truy cập công khai (Enable Row Level Security - RLS)
+-- 4. Bật quyền đọc/ghi công khai (Enable Row Level Security - RLS)
 ALTER TABLE registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 
--- 5. Tạo Policy cho phép mọi người đọc và ghi dữ liệu (Read & Write Public)
+-- 5. Tạo Policy cho phép mọi người đọc và ghi dữ liệu công khai (Public Read/Write)
 DROP POLICY IF EXISTS "Allow public read write registrations" ON registrations;
 CREATE POLICY "Allow public read write registrations" ON registrations FOR ALL USING (true) WITH CHECK (true);
 
@@ -41,8 +41,21 @@ CREATE POLICY "Allow public read write app_config" ON app_config FOR ALL USING (
 DROP POLICY IF EXISTS "Allow public read write employees" ON employees;
 CREATE POLICY "Allow public read write employees" ON employees FOR ALL USING (true) WITH CHECK (true);
 
--- 6. Kích hoạt tính năng Realtime (Đồng bộ tức thì giữa các thiết bị) cho cả 3 bảng
--- Lưu ý: Nếu lệnh ALTER PUBLICATION báo lỗi do bảng đã tồn tại trong publication, có thể bỏ qua hoặc chạy từng dòng add table
+-- 6. Nạp dữ liệu mặc định ban đầu nếu bảng còn trống
+INSERT INTO app_config (id, config_json, updated_at)
+VALUES (1, '{"targetMonth": 7, "targetYear": 2026, "startTime": "", "endTime": "", "isOpenAlways": true}', NOW()::text)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO employees (code, name, created_at)
+VALUES 
+    ('NV001', 'Nguyễn Văn An', NOW()::text),
+    ('NV002', 'Trần Thị Bình', NOW()::text),
+    ('NV003', 'Lê Hoàng Cường', NOW()::text),
+    ('NV004', 'Phạm Minh Đức', NOW()::text),
+    ('NV005', 'Hoàng Thị Em', NOW()::text)
+ON CONFLICT (code) DO NOTHING;
+
+-- 7. Kích hoạt tính năng Realtime phát sóng tức thời (Realtime Subscription) cho cả 3 bảng
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'registrations') THEN
@@ -55,4 +68,5 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE employees;
     END IF;
 END $$;
+
 
