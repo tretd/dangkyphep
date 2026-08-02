@@ -1,20 +1,36 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   JavaScript Application Core (Fixed Banner & Colorful Employee Cards)
+   JavaScript Application Core (Persistent Storage Fix & Auto Migration)
    ========================================================================== */
 
 (function () {
     // ----------------------------------------------------------------------
-    // 1. Constants & State
+    // Dynamic Favicon Setter Helper
+    // ----------------------------------------------------------------------
+    function setFaviconUrl(url) {
+        let link = document.querySelector("link[rel*='icon']");
+        if (!link) {
+            link = document.createElement('link');
+            link.rel = 'icon';
+            document.head.appendChild(link);
+        }
+        link.type = 'image/png';
+        link.href = url;
+    }
+    
+    setFaviconUrl('https://iili.io/F66acRs.png');
+
+    // ----------------------------------------------------------------------
+    // 1. Constants & Persistent Storage Keys (NO VERSION RESET)
     // ----------------------------------------------------------------------
     const ADMIN_PASSCODE = 'Cuong@032';
 
-    const STORAGE_EMPLOYEES = 'leave_app_employees_v8';
-    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v8';
-    const STORAGE_CONFIG = 'leave_app_config_v8';
-    const STORAGE_SUPABASE = 'leave_app_supabase_v8';
+    const STORAGE_EMPLOYEES = 'leave_app_employees_data';
+    const STORAGE_REGISTRATIONS = 'leave_app_registrations_data';
+    const STORAGE_CONFIG = 'leave_app_config_data';
+    const STORAGE_SUPABASE = 'leave_app_supabase_data';
 
-    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v8') : null;
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_channel') : null;
 
     const DEFAULT_EMPLOYEES = [
         { code: 'NV001', name: 'Nguyễn Văn An' },
@@ -25,7 +41,7 @@
     ];
 
     const DEFAULT_CONFIG = {
-        targetMonth: 6, // 0-indexed: 6 = July (Tháng 7)
+        targetMonth: 6, // 0-indexed: 6 = July
         targetYear: 2026,
         startTime: '',
         endTime: '',
@@ -112,7 +128,7 @@
     const btnExportExcel = document.getElementById('btnExportExcel');
 
     // ----------------------------------------------------------------------
-    // 3. Initialization
+    // 3. Initialization & Auto Data Migration
     // ----------------------------------------------------------------------
     function init() {
         loadData();
@@ -143,16 +159,17 @@
     }
 
     function loadData() {
-        const savedEmp = localStorage.getItem(STORAGE_EMPLOYEES);
+        // Auto migrate from legacy version keys if present
+        let savedEmp = localStorage.getItem(STORAGE_EMPLOYEES) || localStorage.getItem('leave_app_employees_v8') || localStorage.getItem('leave_app_employees_v5');
         employees = savedEmp ? JSON.parse(savedEmp) : [...DEFAULT_EMPLOYEES];
 
-        const savedRegs = localStorage.getItem(STORAGE_REGISTRATIONS);
+        let savedRegs = localStorage.getItem(STORAGE_REGISTRATIONS) || localStorage.getItem('leave_app_registrations_v8') || localStorage.getItem('leave_app_registrations_v5');
         registrations = savedRegs ? JSON.parse(savedRegs) : {};
 
-        const savedConfig = localStorage.getItem(STORAGE_CONFIG);
+        let savedConfig = localStorage.getItem(STORAGE_CONFIG) || localStorage.getItem('leave_app_config_v8') || localStorage.getItem('leave_app_config_v5');
         appConfig = savedConfig ? JSON.parse(savedConfig) : { ...DEFAULT_CONFIG };
 
-        const savedSupa = localStorage.getItem(STORAGE_SUPABASE);
+        let savedSupa = localStorage.getItem(STORAGE_SUPABASE) || localStorage.getItem('leave_app_supabase_v8') || localStorage.getItem('leave_app_supabase_v5');
         if (savedSupa) {
             supabaseConfig = JSON.parse(savedSupa);
             supabaseUrl.value = supabaseConfig.url || '';
@@ -164,12 +181,18 @@
 
         startTimeInput.value = appConfig.startTime || '';
         endTimeInput.value = appConfig.endTime || '';
+
+        // Immediately persist to new main storage keys
+        saveData();
     }
 
     function saveData() {
         localStorage.setItem(STORAGE_EMPLOYEES, JSON.stringify(employees));
         localStorage.setItem(STORAGE_REGISTRATIONS, JSON.stringify(registrations));
         localStorage.setItem(STORAGE_CONFIG, JSON.stringify(appConfig));
+        if (supabaseConfig.url || supabaseConfig.key) {
+            localStorage.setItem(STORAGE_SUPABASE, JSON.stringify(supabaseConfig));
+        }
 
         if (syncChannel) {
             syncChannel.postMessage({ type: 'DATA_UPDATED' });
@@ -193,16 +216,16 @@
             try {
                 supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.key);
                 supabaseStatusAlert.innerHTML = `
-                    <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d;">
+                    <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d; padding:10px; border-radius:8px;">
                         <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công!
                     </div>`;
                 fetchSupabaseData();
             } catch (err) {
-                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
+                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; padding:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
             }
         } else {
             supabaseStatusAlert.innerHTML = `
-                <div class="alert alert-warning" style="background:#f8fafc; border-color:#cbd5e1; color:#64748b;">
+                <div class="alert alert-warning" style="background:#f8fafc; border-color:#cbd5e1; color:#64748b; padding:10px; border-radius:8px;">
                     <i class="fa-solid fa-circle-info"></i> Đang chạy ở chế độ <b>Local Demo</b>. Thêm URL & Key để bật Cloud Realtime.
                 </div>`;
         }
@@ -484,7 +507,7 @@
 
                 modalDateTitle.textContent = titleStr;
                 modalDateInput.value = dateFormatted;
-                renderEmployeeCardsGrid(); // Reset and render fresh colorful cards
+                renderEmployeeCardsGrid();
                 openModal(registerModal);
             }
         });
@@ -659,17 +682,28 @@
             }
         });
 
+        // SAVE SUPABASE CONFIG (PERSISTENT & IMMEDIATE UI UPDATE)
         btnSaveSupabase.addEventListener('click', () => {
-            supabaseConfig.url = supabaseUrl.value.trim();
-            supabaseConfig.key = supabaseKey.value.trim();
+            const urlVal = supabaseUrl.value.trim();
+            const keyVal = supabaseKey.value.trim();
+
+            if (!urlVal || !keyVal) {
+                showToast('Vui lòng điền đầy đủ Supabase URL và Anon Key!', 'warning');
+                return;
+            }
+
+            supabaseConfig = { url: urlVal, key: keyVal };
             localStorage.setItem(STORAGE_SUPABASE, JSON.stringify(supabaseConfig));
+            saveData();
             initSupabaseIfConfigured();
-            showToast('Đã lưu cấu hình Supabase!', 'success');
+            showToast('Đã lưu kết nối Supabase Cloud thành công!', 'success');
         });
 
         btnDisconnectSupabase.addEventListener('click', () => {
             supabaseConfig = { url: '', key: '' };
             localStorage.removeItem(STORAGE_SUPABASE);
+            localStorage.removeItem('leave_app_supabase_v8');
+            localStorage.removeItem('leave_app_supabase_v5');
             supabaseUrl.value = '';
             supabaseKey.value = '';
             supabaseClient = null;
