@@ -84,6 +84,9 @@
     const topStatusBanner = document.getElementById('topStatusBanner');
     const bannerIcon = document.getElementById('bannerIcon');
     const bannerText = document.getElementById('bannerText');
+    const cloudStatusChip = document.getElementById('cloudStatusChip');
+    const cloudStatusIcon = document.getElementById('cloudStatusIcon');
+    const cloudStatusText = document.getElementById('cloudStatusText');
 
     const appHeaderSub = document.getElementById('appHeaderSub');
     const gridTitleSection = document.getElementById('gridTitleSection');
@@ -153,6 +156,9 @@
     const supabaseStatusAlert = document.getElementById('supabaseStatusAlert');
     const btnExportExcel = document.getElementById('btnExportExcel');
 
+    let realtimeChannel = null;
+    let isFetchingCloud = false;
+
     // ----------------------------------------------------------------------
     // 3. Initialization
     // ----------------------------------------------------------------------
@@ -182,6 +188,37 @@
                 }
             };
         }
+
+        // Auto-refresh from cloud when tab becomes active
+        window.addEventListener('focus', () => {
+            if (supabaseClient) fetchSupabaseData(true);
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && supabaseClient) {
+                fetchSupabaseData(true);
+            }
+        });
+
+        // Polling fallback every 15 seconds
+        setInterval(() => {
+            if (supabaseClient) fetchSupabaseData(true);
+        }, 15000);
+    }
+
+    function updateCloudBadge(state, text) {
+        if (!cloudStatusChip) return;
+        cloudStatusChip.className = `cloud-status-chip ${state}`;
+        if (state === 'online') {
+            if (cloudStatusIcon) cloudStatusIcon.className = 'fa-solid fa-cloud-check';
+            if (cloudStatusText) cloudStatusText.textContent = text || 'Cloud Realtime';
+        } else if (state === 'syncing') {
+            if (cloudStatusIcon) cloudStatusIcon.className = 'fa-solid fa-spinner fa-spin';
+            if (cloudStatusText) cloudStatusText.textContent = text || 'Đang đồng bộ...';
+        } else {
+            if (cloudStatusIcon) cloudStatusIcon.className = 'fa-solid fa-cloud-slash';
+            if (cloudStatusText) cloudStatusText.textContent = text || 'Ngoại tuyến';
+        }
     }
 
     function loadData() {
@@ -194,8 +231,7 @@
         let savedConfig = localStorage.getItem(STORAGE_CONFIG) || localStorage.getItem('leave_app_config_v8') || localStorage.getItem('leave_app_config_v5');
         appConfig = savedConfig ? JSON.parse(savedConfig) : { ...DEFAULT_CONFIG };
 
-        // Force upgrade any saved month from July (6) to August 2026 (7)
-        if (appConfig.targetMonth === 6 || appConfig.targetMonth === undefined || appConfig.targetMonth === null) {
+        if (appConfig.targetMonth === undefined || appConfig.targetMonth === null) {
             appConfig.targetMonth = 7; // August 2026
         }
 
@@ -214,10 +250,7 @@
             supabaseConfig = { ...DEFAULT_SUPABASE };
         }
 
-        // Guarantee active URL & Key are never empty or mistyped from old localStorage
-        if (!supabaseConfig.url || supabaseConfig.url.includes('duyttscaoezluyhvwnud')) {
-            supabaseConfig.url = DEFAULT_SUPABASE.url;
-        }
+        if (!supabaseConfig.url) supabaseConfig.url = DEFAULT_SUPABASE.url;
         if (!supabaseConfig.key) supabaseConfig.key = DEFAULT_SUPABASE.key;
 
         supabaseUrl.value = supabaseConfig.url;
@@ -267,10 +300,13 @@
                 supabaseKey.value = activeKey;
                 supabaseClient = window.supabase.createClient(cleanUrl, activeKey);
                 fetchSupabaseData();
+                subscribeSupabaseRealtime();
             } catch (err) {
+                updateCloudBadge('offline', 'Lỗi kết nối');
                 supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; padding:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
             }
         } else {
+            updateCloudBadge('offline', 'Chưa cấu hình');
             supabaseStatusAlert.innerHTML = `
                 <div class="alert alert-warning" style="background:#f8fafc; border-color:#cbd5e1; color:#64748b; padding:10px; border-radius:8px;">
                     <i class="fa-solid fa-circle-info"></i> Đang tự động sử dụng Supabase Key hệ thống để kết nối Cloud Realtime.
@@ -278,57 +314,85 @@
         }
     }
 
-    async function fetchSupabaseData() {
+    function subscribeSupabaseRealtime() {
         if (!supabaseClient) return;
         try {
-            // 1. Fetch Registrations
-            const { data: regData, error: regError } = await supabaseClient.from('registrations').select('*');
-            if (!regError && regData) {
+            if (realtimeChannel) {
+                supabaseClient.removeChannel(realtimeChannel);
+            }
+
+            realtimeChannel = supabaseClient.channel('leave-app-realtime-sync')
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public' },
+                    (payload) => {
+                        console.log('⚡ Supabase Realtime Event Received:', payload);
+                        fetchSupabaseData(true);
+                    }
+                )
+                .subscribe((status) => {
+                    console.log('📡 Supabase Realtime Status:', status);
+                    if (status === 'SUBSCRIBED') {
+                        updateCloudBadge('online', 'Cloud Realtime');
+                    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        updateCloudBadge('offline', 'Lỗi Realtime');
+                    }
+                });
+        } catch (err) {
+            console.warn('Realtime subscription exception:', err);
+        }
+    }
+
+    async function fetchSupabaseData(isSilent = false) {
+        if (!supabaseClient || isFetchingCloud) return;
+        isFetchingCloud = true;
+        if (!isSilent) updateCloudBadge('syncing', 'Đang đồng bộ...');
+
+        try {
+            const [regRes, cfgRes, empRes] = await Promise.all([
+                supabaseClient.from('registrations').select('*'),
+                supabaseClient.from('app_config').select('*').limit(1),
+                supabaseClient.from('employees').select('*')
+            ]);
+
+            // 1. Process Registrations
+            if (!regRes.error && regRes.data) {
                 const cloudRegs = {};
-                regData.forEach(item => {
+                regRes.data.forEach(item => {
                     cloudRegs[item.date_str] = {
                         empCode: item.emp_code,
                         empName: item.emp_name,
-                        note: item.note,
-                        time: item.created_at
+                        note: item.note || '',
+                        time: item.created_at || ''
                     };
                 });
                 registrations = cloudRegs;
             }
 
-            // 2. Fetch App Config (Month & Countdown Lock) if app_config table exists
-            try {
-                const { data: cfgData } = await supabaseClient.from('app_config').select('*').limit(1);
-                if (cfgData && cfgData.length > 0) {
-                    const cloudCfg = cfgData[0];
-                    if (cloudCfg.config_json) {
-                        const parsedCfg = typeof cloudCfg.config_json === 'string' ? JSON.parse(cloudCfg.config_json) : cloudCfg.config_json;
-                        appConfig = { ...appConfig, ...parsedCfg };
-                        configMonthSelect.value = String(appConfig.targetMonth ?? 7);
-                        configYearSelect.value = String(appConfig.targetYear ?? 2026);
-                        startTimeInput.value = appConfig.startTime || '';
-                        endTimeInput.value = appConfig.endTime || '';
-                    }
+            // 2. Process App Config
+            if (!cfgRes.error && cfgRes.data && cfgRes.data.length > 0) {
+                const cloudCfg = cfgRes.data[0];
+                if (cloudCfg.config_json) {
+                    const parsedCfg = typeof cloudCfg.config_json === 'string' ? JSON.parse(cloudCfg.config_json) : cloudCfg.config_json;
+                    appConfig = { ...appConfig, ...parsedCfg };
+                    configMonthSelect.value = String(appConfig.targetMonth ?? 7);
+                    configYearSelect.value = String(appConfig.targetYear ?? 2026);
+                    startTimeInput.value = appConfig.startTime || '';
+                    endTimeInput.value = appConfig.endTime || '';
                 }
-            } catch (e) {
-                // Table app_config optional fallback
             }
 
-            // 3. Fetch Employees List if employees table exists
-            try {
-                const { data: empData } = await supabaseClient.from('employees').select('*');
-                if (empData && empData.length > 0) {
-                    employees = empData.map(e => ({ code: e.code, name: e.name }));
-                }
-            } catch (e) {
-                // Table employees optional fallback
+            // 3. Process Employees List
+            if (!empRes.error && empRes.data && empRes.data.length > 0) {
+                employees = empRes.data.map(e => ({ code: e.code, name: e.name }));
             }
 
             supabaseStatusAlert.innerHTML = `
                 <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d; padding:10px; border-radius:8px;">
-                    <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công! Dữ liệu đang được đồng bộ trực tuyến giữa tất cả các thiết bị.
+                    <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công! Dữ liệu đang được đồng bộ Realtime giữa tất cả thiết bị.
                 </div>`;
 
+            updateCloudBadge('online', 'Cloud Realtime');
             saveData(false);
             updateMonthUIHeaders();
             renderDaysGrid();
@@ -340,18 +404,25 @@
 
         } catch (e) {
             console.warn('Supabase network connection failed (running offline/local mode):', e);
+            updateCloudBadge('offline', 'Mất kết nối Cloud');
             supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#64748b; background:#f8fafc; border:1px solid #cbd5e1; padding:10px; border-radius:8px;"><i class="fa-solid fa-circle-info"></i> Tự động làm việc ở chế độ lưu trữ mượt mà!</div>`;
+        } finally {
+            isFetchingCloud = false;
         }
     }
 
     async function pushConfigToSupabase() {
         if (!supabaseClient) return;
         try {
-            await supabaseClient.from('app_config').upsert([
+            const { error } = await supabaseClient.from('app_config').upsert([
                 { id: 1, config_json: appConfig, updated_at: new Date().toISOString() }
             ]);
+            if (error) {
+                console.error('Push config error:', error);
+                showToast('Lỗi lưu cấu hình lên Cloud: ' + error.message, 'warning');
+            }
         } catch (e) {
-            console.warn('Push config error:', e);
+            console.warn('Push config exception:', e);
         }
     }
 
@@ -360,12 +431,13 @@
         try {
             await supabaseClient.from('employees').delete().neq('code', '');
             if (employees.length > 0) {
-                await supabaseClient.from('employees').insert(
+                const { error } = await supabaseClient.from('employees').insert(
                     employees.map(e => ({ code: e.code, name: e.name }))
                 );
+                if (error) console.error('Push employees error:', error);
             }
         } catch (e) {
-            console.warn('Push employees error:', e);
+            console.warn('Push employees exception:', e);
         }
     }
 
@@ -666,6 +738,31 @@
             const [empCode, empName] = selectedEmpVal.split('|');
             const nowStr = new Date().toLocaleString('vi-VN');
 
+            // If Supabase client is connected, push to Cloud first and check error
+            if (supabaseClient) {
+                updateCloudBadge('syncing', 'Đang lưu...');
+                try {
+                    const { error } = await supabaseClient.from('registrations').insert([
+                        { date_str: dateStr, emp_code: empCode, emp_name: empName, note: '', created_at: nowStr }
+                    ]);
+
+                    if (error) {
+                        console.error('Supabase registration error:', error);
+                        updateCloudBadge('offline', 'Lỗi Cloud');
+                        if (error.code === '23505' || (error.message && error.message.includes('duplicate'))) {
+                            showToast(`Rất tiếc! Ngày này vừa bị đồng nghiệp khác đăng ký trước. Đang làm mới...`, 'error');
+                        } else {
+                            showToast(`Không thể đồng bộ Cloud: ${error.message}`, 'error');
+                        }
+                        await fetchSupabaseData(true);
+                        closeModal(registerModal);
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Push error exception:', err);
+                }
+            }
+
             registrations[dateStr] = {
                 empCode,
                 empName,
@@ -674,16 +771,7 @@
             };
 
             saveData();
-
-            if (supabaseClient) {
-                try {
-                    await supabaseClient.from('registrations').insert([
-                        { date_str: dateStr, emp_code: empCode, emp_name: empName, note: '', created_at: nowStr }
-                    ]);
-                } catch (err) {
-                    console.error('Supabase push error:', err);
-                }
-            }
+            updateCloudBadge('online', 'Cloud Realtime');
 
             closeModal(registerModal);
             renderDaysGrid();
