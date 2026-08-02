@@ -16,6 +16,15 @@
 </head>
 <body class="apple-theme">
 
+    <!-- FIXED TOP STATUS BANNER (Dải băng treo cố định trên cùng màn hình) -->
+    <div class="top-status-banner open" id="topStatusBanner">
+        <div class="banner-content">
+            <span class="banner-pulse"></span>
+            <i class="fa-solid fa-lock-open" id="bannerIcon"></i>
+            <span id="bannerText">HỆ THỐNG ĐANG MỞ ĐĂNG KÝ NGHỈ PHÉP</span>
+        </div>
+    </div>
+
     <!-- Header Section -->
     <header class="app-header apple-header">
         <div class="container header-container">
@@ -30,11 +39,6 @@
             </div>
 
             <div class="header-actions">
-                <div class="status-indicator" id="regStatusIndicator">
-                    <span class="status-dot"></span>
-                    <span class="status-text" id="statusText">Đang kiểm tra...</span>
-                </div>
-                
                 <!-- Admin Lock Key Button -->
                 <button class="key-btn apple-key-btn" id="btnAdminKey" title="Cấu Hình Trưởng Nhóm">
                     <i class="fa-solid fa-key"></i>
@@ -64,9 +68,9 @@
         <div class="days-grid-header">
             <span class="section-title" id="gridTitleSection"><i class="fa-solid fa-calendar-days"></i> Lịch Đăng Ký Tháng 07/2026</span>
             <span class="legend">
-                <span class="legend-item"><span class="dot dot-available"></span> Chưa đăng ký (Xanh dương - Bấm để chọn)</span>
-                <span class="legend-item"><span class="dot dot-registered"></span> Đã đăng ký (Xanh lá)</span>
-                <span class="legend-item"><span class="dot dot-sunday"></span> Chủ nhật (Đỏ - Khóa)</span>
+                <span class="legend-item"><span class="dot dot-available"></span> Chưa chọn (Xanh dương)</span>
+                <span class="legend-item"><span class="dot dot-registered"></span> Đã chọn (Xanh lá)</span>
+                <span class="legend-item"><span class="dot dot-sunday"></span> Chủ nhật (Đỏ)</span>
             </span>
         </div>
 
@@ -146,7 +150,7 @@
         </div>
     </div>
 
-    <!-- Modal: Register Leave (Employee - Direct Selection, No Note Field) -->
+    <!-- Modal: Register Leave (Employee - Modern Colorful Card Selector Grid) -->
     <div class="modal-overlay" id="registerModal">
         <div class="modal-content apple-card">
             <div class="modal-header">
@@ -158,18 +162,20 @@
                     <i class="fa-solid fa-calendar-day"></i>
                     <div>
                         <div class="selected-date-title" id="modalDateTitle">Thứ ..., Ngày ...</div>
-                        <div class="selected-date-sub">Quy tắc: Tối đa 01 nhân viên đăng ký cho ngày này</div>
+                        <div class="selected-date-sub">Chạm chọn 1 thẻ nhân viên bên dưới để xác nhận:</div>
                     </div>
                 </div>
 
                 <form id="registerForm">
                     <input type="hidden" id="modalDateInput">
+                    <input type="hidden" id="selectedEmpValue" required>
                     
                     <div class="form-group">
-                        <label for="selectEmployee">Chọn Nhân Viên (Mã NV - Tên NV): <span class="required">*</span></label>
-                        <select id="selectEmployee" required class="form-control">
-                            <option value="">-- Chọn Mã Nhân Viên - Tên Nhân Viên --</option>
-                        </select>
+                        <label class="emp-grid-label"><i class="fa-solid fa-user-check"></i> Danh Sách Thẻ Nhân Viên:</label>
+                        <!-- Dynamic Colorful Employee Cards Grid -->
+                        <div class="emp-card-grid" id="empCardGrid">
+                            <!-- Dynamic Cards rendered by app.js -->
+                        </div>
                     </div>
 
                     <div class="modal-footer">
@@ -275,10 +281,9 @@
                     </div>
                 </div>
 
-                <!-- Tab 3: Time & Month Config (Cấu hình chọn Tháng & Giờ Mở) -->
+                <!-- Tab 3: Time & Month Config -->
                 <div class="tab-content" id="tabTimeWindow">
                     
-                    <!-- Month Selector Card for Admin -->
                     <div class="config-card">
                         <h4><i class="fa-solid fa-calendar-days"></i> Chọn Tháng & Năm Mở Đăng Ký Lịch</h4>
                         <p class="config-desc">Trưởng nhóm chọn Tháng/Năm nào, toàn bộ giao diện bên ngoài sẽ tự động tạo bảng lịch cho đúng tháng đó.</p>
@@ -361,7 +366,7 @@
                         </div>
                         <div class="form-group">
                             <label for="supabaseKey">Supabase Anon Key:</label>
-                            <input type="password" id="supabaseKey" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                            <input type="password" id="supabaseKey" class="form-control" placeholder="sb_publishable_... hoặc eyJhbGci...">
                         </div>
 
                         <div class="action-buttons">

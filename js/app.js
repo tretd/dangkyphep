@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   JavaScript Application Core (Dynamic Month Selection + Direct Card Click)
+   JavaScript Application Core (Fixed Banner & Colorful Employee Cards)
    ========================================================================== */
 
 (function () {
@@ -9,12 +9,12 @@
     // ----------------------------------------------------------------------
     const ADMIN_PASSCODE = 'Cuong@032';
 
-    const STORAGE_EMPLOYEES = 'leave_app_employees_v6';
-    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v6';
-    const STORAGE_CONFIG = 'leave_app_config_v6';
-    const STORAGE_SUPABASE = 'leave_app_supabase_v6';
+    const STORAGE_EMPLOYEES = 'leave_app_employees_v8';
+    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v8';
+    const STORAGE_CONFIG = 'leave_app_config_v8';
+    const STORAGE_SUPABASE = 'leave_app_supabase_v8';
 
-    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v6') : null;
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v8') : null;
 
     const DEFAULT_EMPLOYEES = [
         { code: 'NV001', name: 'Nguyễn Văn An' },
@@ -46,13 +46,15 @@
     // ----------------------------------------------------------------------
     // 2. DOM Elements
     // ----------------------------------------------------------------------
+    const topStatusBanner = document.getElementById('topStatusBanner');
+    const bannerIcon = document.getElementById('bannerIcon');
+    const bannerText = document.getElementById('bannerText');
+
     const appHeaderSub = document.getElementById('appHeaderSub');
     const gridTitleSection = document.getElementById('gridTitleSection');
     const daysListEl = document.getElementById('daysList');
     const searchInput = document.getElementById('searchInput');
     const filterBtns = document.querySelectorAll('.filter-btn');
-    const regStatusIndicator = document.getElementById('regStatusIndicator');
-    const statusText = document.getElementById('statusText');
 
     // Countdown Overlay
     const countdownOverlay = document.getElementById('countdownOverlay');
@@ -71,14 +73,15 @@
     const adminPassInput = document.getElementById('adminPassInput');
     const passErrorMsg = document.getElementById('passErrorMsg');
 
-    // Register Modal
+    // Register Modal & Dynamic Colorful Employee Cards
     const registerModal = document.getElementById('registerModal');
     const closeRegisterModal = document.getElementById('closeRegisterModal');
     const btnCancelRegister = document.getElementById('btnCancelRegister');
     const registerForm = document.getElementById('registerForm');
     const modalDateTitle = document.getElementById('modalDateTitle');
     const modalDateInput = document.getElementById('modalDateInput');
-    const selectEmployee = document.getElementById('selectEmployee');
+    const empCardGrid = document.getElementById('empCardGrid');
+    const selectedEmpValue = document.getElementById('selectedEmpValue');
 
     // Admin Modal
     const adminModal = document.getElementById('adminModal');
@@ -86,7 +89,6 @@
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    // Admin Month & Time Config Elements
     const configMonthSelect = document.getElementById('configMonthSelect');
     const configYearSelect = document.getElementById('configYearSelect');
     const newEmpId = document.getElementById('newEmpId');
@@ -118,7 +120,7 @@
         initSupabaseIfConfigured();
         updateMonthUIHeaders();
         renderDaysGrid();
-        renderEmployeeDropdown();
+        renderEmployeeCardsGrid();
         renderAdminEmployeeTable();
         renderAdminRegsTable();
         updateDashboardStats();
@@ -131,6 +133,7 @@
                     loadData();
                     updateMonthUIHeaders();
                     renderDaysGrid();
+                    renderEmployeeCardsGrid();
                     renderAdminRegsTable();
                     updateDashboardStats();
                     showToast('Dữ liệu vừa được cập nhật!', 'info');
@@ -183,7 +186,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 4. Supabase Integration
+    // 4. Supabase Cloud Sync
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
         if (window.supabase && supabaseConfig.url && supabaseConfig.key) {
@@ -230,7 +233,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 5. Countdown Ticker
+    // 5. Countdown Ticker & Fixed Top Status Banner
     // ----------------------------------------------------------------------
     function startCountdownTicker() {
         if (timerInterval) clearInterval(timerInterval);
@@ -240,11 +243,14 @@
 
     function checkTimeAndTicker() {
         const now = new Date();
+        const mStr = String((appConfig.targetMonth ?? 6) + 1).padStart(2, '0');
+        const y = appConfig.targetYear ?? 2026;
 
         if (appConfig.isOpenAlways) {
             countdownOverlay.style.display = 'none';
-            regStatusIndicator.className = 'status-indicator open';
-            statusText.textContent = 'Đang Mở Đăng Ký';
+            topStatusBanner.className = 'top-status-banner open';
+            bannerIcon.className = 'fa-solid fa-lock-open';
+            bannerText.textContent = `HỆ THỐNG ĐANG MỞ ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
             return;
         }
 
@@ -253,8 +259,9 @@
 
         if (start && now < start) {
             countdownOverlay.style.display = 'flex';
-            regStatusIndicator.className = 'status-indicator closed';
-            statusText.textContent = 'Chưa Đếm Xong';
+            topStatusBanner.className = 'top-status-banner closed';
+            bannerIcon.className = 'fa-solid fa-hourglass-half';
+            bannerText.textContent = `CỔNG ĐĂNG KÝ ĐANG ĐẾM NGƯỢC CHỜ MỞ (THÁNG ${mStr}/${y})`;
 
             const diff = start - now;
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -273,8 +280,9 @@
 
         if (end && now > end) {
             countdownOverlay.style.display = 'flex';
-            regStatusIndicator.className = 'status-indicator closed';
-            statusText.textContent = 'Đã Hết Hạn';
+            topStatusBanner.className = 'top-status-banner closed';
+            bannerIcon.className = 'fa-solid fa-lock';
+            bannerText.textContent = `CỔNG ĐĂNG KÝ ĐÃ KHÓA / HẾT HẠN (THÁNG ${mStr}/${y})`;
 
             cdDays.textContent = '00';
             cdHours.textContent = '00';
@@ -285,8 +293,9 @@
         }
 
         countdownOverlay.style.display = 'none';
-        regStatusIndicator.className = 'status-indicator open';
-        statusText.textContent = 'Đang Mở Đăng Ký';
+        topStatusBanner.className = 'top-status-banner open';
+        bannerIcon.className = 'fa-solid fa-lock-open';
+        bannerText.textContent = `HỆ THỐNG ĐANG MỞ ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
     }
 
     function formatDateTime(d) {
@@ -300,7 +309,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 6. Dynamic Calendar Generation for Configured Month & Year
+    // 6. Render Ultra-Compact Cards Grid
     // ----------------------------------------------------------------------
     function renderDaysGrid() {
         daysListEl.innerHTML = '';
@@ -320,7 +329,6 @@
             const displayDateStr = `${String(dayNum).padStart(2, '0')}/${mStr}`;
             const existingReg = registrations[dateFormatted];
 
-            // Filter logic
             if (activeFilter === 'available' && (isSunday || existingReg)) continue;
             if (activeFilter === 'registered' && !existingReg) continue;
             if (activeFilter === 'sunday' && !isSunday) continue;
@@ -342,12 +350,6 @@
                         <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/${mStr}</span>
                         <span class="card-day-name">${dayName}</span>
                     </div>
-                    <div class="card-body-text">
-                        <i class="fa-solid fa-ban" style="margin-right:6px;"></i> Chủ Nhật - Khóa
-                    </div>
-                    <div class="sunday-tag">
-                        <i class="fa-solid fa-lock"></i> Không cho chọn
-                    </div>
                 `;
             }
             // 2. GREEN CARD: REGISTERED
@@ -362,12 +364,9 @@
                         <i class="fa-solid fa-user-check" style="margin-right:6px; color:#16a34a;"></i>
                         ${escapeHtml(existingReg.empCode)} - ${escapeHtml(existingReg.empName)}
                     </div>
-                    <div class="registered-tag">
-                        <i class="fa-solid fa-check"></i> Đã chọn
-                    </div>
                 `;
             }
-            // 3. BLUE CARD: AVAILABLE (DIRECT CLICKABLE CARD)
+            // 3. BLUE CARD: AVAILABLE
             else {
                 card.className = 'compact-card card-blue';
                 card.dataset.date = dateFormatted;
@@ -378,10 +377,7 @@
                         <span class="card-day-name">${dayName}</span>
                     </div>
                     <div class="card-body-text">
-                        <i class="fa-regular fa-circle" style="margin-right:6px;"></i> Chưa có ai chọn
-                    </div>
-                    <div class="click-to-select-tag">
-                        <i class="fa-solid fa-hand-pointer"></i> Bấm để chọn
+                        <i class="fa-regular fa-circle" style="margin-right:6px;"></i> Chưa chọn
                     </div>
                 `;
             }
@@ -390,12 +386,47 @@
         }
     }
 
+    // ----------------------------------------------------------------------
+    // 7. Render Custom Colorful Employee Cards Grid Selector
+    // ----------------------------------------------------------------------
+    function renderEmployeeCardsGrid() {
+        empCardGrid.innerHTML = '';
+        selectedEmpValue.value = '';
+
+        if (employees.length === 0) {
+            empCardGrid.innerHTML = '<div style="color:#94a3b8; font-size:12px; grid-column:1/-1;">Chưa có nhân viên nào. Vui lòng vào Trưởng Nhóm để thêm.</div>';
+            return;
+        }
+
+        employees.forEach((emp, idx) => {
+            const themeClass = `emp-theme-${idx % 7}`;
+            const card = document.createElement('div');
+            card.className = `emp-select-card ${themeClass}`;
+            card.dataset.value = `${emp.code}|${emp.name}`;
+
+            const initials = emp.name.split(' ').pop() || emp.code;
+
+            card.innerHTML = `
+                <div class="emp-info-wrapper">
+                    <div class="emp-avatar-badge">${escapeHtml(initials.substring(0, 2).toUpperCase())}</div>
+                    <div>
+                        <div style="font-size:11px; opacity:0.8;">${escapeHtml(emp.code)}</div>
+                        <div>${escapeHtml(emp.name)}</div>
+                    </div>
+                </div>
+                <i class="fa-solid fa-circle-check emp-check-icon"></i>
+            `;
+
+            empCardGrid.appendChild(card);
+        });
+    }
+
     function updateDashboardStats() {
         empTableCount.textContent = employees.length;
     }
 
     // ----------------------------------------------------------------------
-    // 7. Event Handlers
+    // 8. Event Handlers
     // ----------------------------------------------------------------------
     function setupEventListeners() {
         searchInput.addEventListener('input', (e) => {
@@ -438,7 +469,7 @@
             }
         });
 
-        // CLICK DIRECTLY ON BLUE CARD TO OPEN REGISTRATION MODAL
+        // Direct Card Click
         daysListEl.addEventListener('click', (e) => {
             const blueCard = e.target.closest('.card-blue');
             if (blueCard) {
@@ -453,28 +484,37 @@
 
                 modalDateTitle.textContent = titleStr;
                 modalDateInput.value = dateFormatted;
-                selectEmployee.value = '';
+                renderEmployeeCardsGrid(); // Reset and render fresh colorful cards
                 openModal(registerModal);
+            }
+        });
+
+        // Employee Card Selection Click
+        empCardGrid.addEventListener('click', (e) => {
+            const card = e.target.closest('.emp-select-card');
+            if (card) {
+                document.querySelectorAll('.emp-select-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedEmpValue.value = card.dataset.value;
             }
         });
 
         closeRegisterModal.addEventListener('click', () => closeModal(registerModal));
         btnCancelRegister.addEventListener('click', () => closeModal(registerModal));
 
-        // Submit Registration (1-Click, No Note/Reason Field Needed)
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const dateStr = modalDateInput.value;
-            const selectedEmpVal = selectEmployee.value;
+            const selectedEmpVal = selectedEmpValue.value;
 
             if (!selectedEmpVal) {
-                showToast('Vui lòng chọn Mã Nhân Viên - Tên Nhân Viên!', 'warning');
+                showToast('Vui lòng chạm chọn 1 Thẻ Nhân Viên!', 'warning');
                 return;
             }
 
             if (registrations[dateStr]) {
                 const existing = registrations[dateStr];
-                showToast(`Đã có người khác chọn trước! Ngày này thuộc về ${existing.empCode} - ${existing.empName}.`, 'error');
+                showToast(`Đã có người chọn trước! Ngày này thuộc về ${existing.empCode} - ${existing.empName}.`, 'error');
                 closeModal(registerModal);
                 renderDaysGrid();
                 return;
@@ -505,7 +545,7 @@
             closeModal(registerModal);
             renderDaysGrid();
             renderAdminRegsTable();
-            showToast(`Đã lưu thành công cho ${empCode} - ${empName}!`, 'success');
+            showToast(`Đã chọn thành công cho ${empCode} - ${empName}!`, 'success');
         });
 
         closeAdminModal.addEventListener('click', () => closeModal(adminModal));
@@ -537,7 +577,7 @@
             newEmpId.value = '';
             newEmpName.value = '';
             saveData();
-            renderEmployeeDropdown();
+            renderEmployeeCardsGrid();
             renderAdminEmployeeTable();
             updateDashboardStats();
             showToast(`Đã thêm nhân viên ${code} - ${name}`, 'success');
@@ -550,7 +590,7 @@
                 if (confirm(`Bạn có chắc chắn xóa nhân viên ${code}?`)) {
                     employees = employees.filter(e => e.code !== code);
                     saveData();
-                    renderEmployeeDropdown();
+                    renderEmployeeCardsGrid();
                     renderAdminEmployeeTable();
                     updateDashboardStats();
                     showToast(`Đã xóa nhân viên ${code}`, 'info');
@@ -575,7 +615,6 @@
             }
         });
 
-        // SAVE MONTH & TIME WINDOW CONFIG
         btnSaveTimeConfig.addEventListener('click', () => {
             appConfig.targetMonth = parseInt(configMonthSelect.value, 10);
             appConfig.targetYear = parseInt(configYearSelect.value, 10);
@@ -642,18 +681,8 @@
     }
 
     // ----------------------------------------------------------------------
-    // 8. Helpers & Renders
+    // 9. Helpers
     // ----------------------------------------------------------------------
-    function renderEmployeeDropdown() {
-        selectEmployee.innerHTML = '<option value="">-- Chọn Mã Nhân Viên - Tên Nhân Viên --</option>';
-        employees.forEach(emp => {
-            const opt = document.createElement('option');
-            opt.value = `${emp.code}|${emp.name}`;
-            opt.textContent = `${emp.code} - ${emp.name}`;
-            selectEmployee.appendChild(opt);
-        });
-    }
-
     function renderAdminEmployeeTable() {
         empTableBody.innerHTML = '';
         if (employees.length === 0) {
