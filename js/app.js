@@ -1,23 +1,20 @@
 /* ==========================================================================
-   Tool Đăng Ký Nghỉ Phép - Tháng 07/2026
-   JavaScript Application Core (Pure HTML5 Vector Graphic System - No Raw Emojis)
+   Tool Đăng Ký Nghỉ Phép
+   JavaScript Application Core (Dynamic Month Selection + Direct Card Click)
    ========================================================================== */
 
 (function () {
     // ----------------------------------------------------------------------
     // 1. Constants & State
     // ----------------------------------------------------------------------
-    const TARGET_YEAR = 2026;
-    const TARGET_MONTH = 6; // 0-indexed: 6 = July
-    const DAYS_IN_JULY = 31;
     const ADMIN_PASSCODE = 'Cuong@032';
 
-    const STORAGE_EMPLOYEES = 'leave_app_employees_v5';
-    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v5';
-    const STORAGE_CONFIG = 'leave_app_config_v5';
-    const STORAGE_SUPABASE = 'leave_app_supabase_v5';
+    const STORAGE_EMPLOYEES = 'leave_app_employees_v6';
+    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v6';
+    const STORAGE_CONFIG = 'leave_app_config_v6';
+    const STORAGE_SUPABASE = 'leave_app_supabase_v6';
 
-    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v5') : null;
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v6') : null;
 
     const DEFAULT_EMPLOYEES = [
         { code: 'NV001', name: 'Nguyễn Văn An' },
@@ -28,6 +25,8 @@
     ];
 
     const DEFAULT_CONFIG = {
+        targetMonth: 6, // 0-indexed: 6 = July (Tháng 7)
+        targetYear: 2026,
         startTime: '',
         endTime: '',
         isOpenAlways: true
@@ -47,6 +46,8 @@
     // ----------------------------------------------------------------------
     // 2. DOM Elements
     // ----------------------------------------------------------------------
+    const appHeaderSub = document.getElementById('appHeaderSub');
+    const gridTitleSection = document.getElementById('gridTitleSection');
     const daysListEl = document.getElementById('daysList');
     const searchInput = document.getElementById('searchInput');
     const filterBtns = document.querySelectorAll('.filter-btn');
@@ -78,7 +79,6 @@
     const modalDateTitle = document.getElementById('modalDateTitle');
     const modalDateInput = document.getElementById('modalDateInput');
     const selectEmployee = document.getElementById('selectEmployee');
-    const regNote = document.getElementById('regNote');
 
     // Admin Modal
     const adminModal = document.getElementById('adminModal');
@@ -86,7 +86,9 @@
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    // Admin Tabs Content
+    // Admin Month & Time Config Elements
+    const configMonthSelect = document.getElementById('configMonthSelect');
+    const configYearSelect = document.getElementById('configYearSelect');
     const newEmpId = document.getElementById('newEmpId');
     const newEmpName = document.getElementById('newEmpName');
     const btnAddEmployee = document.getElementById('btnAddEmployee');
@@ -114,6 +116,7 @@
         loadData();
         setupEventListeners();
         initSupabaseIfConfigured();
+        updateMonthUIHeaders();
         renderDaysGrid();
         renderEmployeeDropdown();
         renderAdminEmployeeTable();
@@ -126,10 +129,11 @@
             syncChannel.onmessage = (event) => {
                 if (event.data && event.data.type === 'DATA_UPDATED') {
                     loadData();
+                    updateMonthUIHeaders();
                     renderDaysGrid();
                     renderAdminRegsTable();
                     updateDashboardStats();
-                    showToast('Dữ liệu đăng ký vừa được cập nhật!', 'info');
+                    showToast('Dữ liệu vừa được cập nhật!', 'info');
                 }
             };
         }
@@ -152,6 +156,9 @@
             supabaseKey.value = supabaseConfig.key || '';
         }
 
+        configMonthSelect.value = String(appConfig.targetMonth ?? 6);
+        configYearSelect.value = String(appConfig.targetYear ?? 2026);
+
         startTimeInput.value = appConfig.startTime || '';
         endTimeInput.value = appConfig.endTime || '';
     }
@@ -166,8 +173,17 @@
         }
     }
 
+    function updateMonthUIHeaders() {
+        const m = (appConfig.targetMonth ?? 6) + 1;
+        const y = appConfig.targetYear ?? 2026;
+        const mStr = String(m).padStart(2, '0');
+
+        appHeaderSub.textContent = `THÁNG ${mStr} / ${y} • TỐI ĐA 1 NGƯỜI / NGÀY`;
+        gridTitleSection.innerHTML = `<i class="fa-solid fa-calendar-days"></i> Lịch Đăng Ký Tháng ${mStr}/${y}`;
+    }
+
     // ----------------------------------------------------------------------
-    // 4. Supabase Cloud Sync
+    // 4. Supabase Integration
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
         if (window.supabase && supabaseConfig.url && supabaseConfig.key) {
@@ -284,21 +300,27 @@
     }
 
     // ----------------------------------------------------------------------
-    // 6. Render Days Grid (HTML5 Vector Graphics Only)
+    // 6. Dynamic Calendar Generation for Configured Month & Year
     // ----------------------------------------------------------------------
     function renderDaysGrid() {
         daysListEl.innerHTML = '';
 
-        for (let dayNum = 1; dayNum <= DAYS_IN_JULY; dayNum++) {
-            const dateObj = new Date(TARGET_YEAR, TARGET_MONTH, dayNum);
+        const targetMonth = appConfig.targetMonth ?? 6;
+        const targetYear = appConfig.targetYear ?? 2026;
+        const totalDaysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const mStr = String(targetMonth + 1).padStart(2, '0');
+
+        for (let dayNum = 1; dayNum <= totalDaysInMonth; dayNum++) {
+            const dateObj = new Date(targetYear, targetMonth, dayNum);
             const dayOfWeekIndex = dateObj.getDay();
             const dayName = DAY_NAMES[dayOfWeekIndex];
             const isSunday = (dayOfWeekIndex === 0);
 
-            const dateFormatted = `${TARGET_YEAR}-${String(TARGET_MONTH + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-            const displayDateStr = `${String(dayNum).padStart(2, '0')}/07`;
+            const dateFormatted = `${targetYear}-${mStr}-${String(dayNum).padStart(2, '0')}`;
+            const displayDateStr = `${String(dayNum).padStart(2, '0')}/${mStr}`;
             const existingReg = registrations[dateFormatted];
 
+            // Filter logic
             if (activeFilter === 'available' && (isSunday || existingReg)) continue;
             if (activeFilter === 'registered' && !existingReg) continue;
             if (activeFilter === 'sunday' && !isSunday) continue;
@@ -317,7 +339,7 @@
                 card.className = 'compact-card card-red';
                 card.innerHTML = `
                     <div class="card-top">
-                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/07</span>
+                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/${mStr}</span>
                         <span class="card-day-name">${dayName}</span>
                     </div>
                     <div class="card-body-text">
@@ -333,7 +355,7 @@
                 card.className = 'compact-card card-green';
                 card.innerHTML = `
                     <div class="card-top">
-                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/07</span>
+                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/${mStr}</span>
                         <span class="card-day-name">${dayName}</span>
                     </div>
                     <div class="card-body-text">
@@ -345,20 +367,22 @@
                     </div>
                 `;
             }
-            // 3. BLUE CARD: AVAILABLE
+            // 3. BLUE CARD: AVAILABLE (DIRECT CLICKABLE CARD)
             else {
                 card.className = 'compact-card card-blue';
+                card.dataset.date = dateFormatted;
+                card.dataset.title = `${dayName}, Ngày ${String(dayNum).padStart(2, '0')}/${mStr}/${targetYear}`;
                 card.innerHTML = `
                     <div class="card-top">
-                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/07</span>
+                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/${mStr}</span>
                         <span class="card-day-name">${dayName}</span>
                     </div>
                     <div class="card-body-text">
-                        <i class="fa-regular fa-circle" style="margin-right:6px;"></i> Chưa có ai đăng ký
+                        <i class="fa-regular fa-circle" style="margin-right:6px;"></i> Chưa có ai chọn
                     </div>
-                    <button class="btn btn-primary btn-open-reg" data-date="${dateFormatted}" data-title="${dayName}, Ngày ${String(dayNum).padStart(2, '0')}/07/2026">
-                        <i class="fa-solid fa-plus"></i> Đăng Ký
-                    </button>
+                    <div class="click-to-select-tag">
+                        <i class="fa-solid fa-hand-pointer"></i> Bấm để chọn
+                    </div>
                 `;
             }
 
@@ -414,11 +438,12 @@
             }
         });
 
+        // CLICK DIRECTLY ON BLUE CARD TO OPEN REGISTRATION MODAL
         daysListEl.addEventListener('click', (e) => {
-            const regBtn = e.target.closest('.btn-open-reg');
-            if (regBtn) {
-                const dateFormatted = regBtn.dataset.date;
-                const titleStr = regBtn.dataset.title;
+            const blueCard = e.target.closest('.card-blue');
+            if (blueCard) {
+                const dateFormatted = blueCard.dataset.date;
+                const titleStr = blueCard.dataset.title;
 
                 if (registrations[dateFormatted]) {
                     showToast(`Ngày này đã có người đăng ký trước!`, 'error');
@@ -428,7 +453,6 @@
 
                 modalDateTitle.textContent = titleStr;
                 modalDateInput.value = dateFormatted;
-                regNote.value = '';
                 selectEmployee.value = '';
                 openModal(registerModal);
             }
@@ -437,11 +461,11 @@
         closeRegisterModal.addEventListener('click', () => closeModal(registerModal));
         btnCancelRegister.addEventListener('click', () => closeModal(registerModal));
 
+        // Submit Registration (1-Click, No Note/Reason Field Needed)
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const dateStr = modalDateInput.value;
             const selectedEmpVal = selectEmployee.value;
-            const noteVal = regNote.value.trim();
 
             if (!selectedEmpVal) {
                 showToast('Vui lòng chọn Mã Nhân Viên - Tên Nhân Viên!', 'warning');
@@ -462,7 +486,7 @@
             registrations[dateStr] = {
                 empCode,
                 empName,
-                note: noteVal,
+                note: '',
                 time: nowStr
             };
 
@@ -471,7 +495,7 @@
             if (supabaseClient) {
                 try {
                     await supabaseClient.from('registrations').insert([
-                        { date_str: dateStr, emp_code: empCode, emp_name: empName, note: noteVal, created_at: nowStr }
+                        { date_str: dateStr, emp_code: empCode, emp_name: empName, note: '', created_at: nowStr }
                     ]);
                 } catch (err) {
                     console.error('Supabase push error:', err);
@@ -481,7 +505,7 @@
             closeModal(registerModal);
             renderDaysGrid();
             renderAdminRegsTable();
-            showToast(`Đăng ký thành công cho ${empCode} - ${empName}!`, 'success');
+            showToast(`Đã lưu thành công cho ${empCode} - ${empName}!`, 'success');
         });
 
         closeAdminModal.addEventListener('click', () => closeModal(adminModal));
@@ -551,28 +575,40 @@
             }
         });
 
+        // SAVE MONTH & TIME WINDOW CONFIG
         btnSaveTimeConfig.addEventListener('click', () => {
+            appConfig.targetMonth = parseInt(configMonthSelect.value, 10);
+            appConfig.targetYear = parseInt(configYearSelect.value, 10);
             appConfig.startTime = startTimeInput.value;
             appConfig.endTime = endTimeInput.value;
             appConfig.isOpenAlways = false;
+
             saveData();
+            updateMonthUIHeaders();
+            renderDaysGrid();
             checkTimeAndTicker();
-            showToast('Đã lưu cấu hình thời gian đăng ký!', 'success');
+            showToast(`Đã lưu cấu hình mở lịch Tháng ${appConfig.targetMonth + 1}/${appConfig.targetYear}!`, 'success');
         });
 
         btnSetOpenNow.addEventListener('click', () => {
+            appConfig.targetMonth = parseInt(configMonthSelect.value, 10);
+            appConfig.targetYear = parseInt(configYearSelect.value, 10);
             appConfig.isOpenAlways = true;
             appConfig.startTime = '';
             appConfig.endTime = '';
             startTimeInput.value = '';
             endTimeInput.value = '';
+
             saveData();
+            updateMonthUIHeaders();
+            renderDaysGrid();
             checkTimeAndTicker();
-            showToast('Đã mở đăng ký tự do!', 'info');
+            showToast(`Đã mở đăng ký tự do Tháng ${appConfig.targetMonth + 1}/${appConfig.targetYear}!`, 'info');
         });
 
         btnClearAllRegs.addEventListener('click', () => {
-            if (confirm('CẢNH BÁO: Xóa tất cả lượt đăng ký nghỉ phép Tháng 7/2026?')) {
+            const mStr = String((appConfig.targetMonth ?? 6) + 1).padStart(2, '0');
+            if (confirm(`CẢNH BÁO: Xóa tất cả lượt đăng ký nghỉ phép Tháng ${mStr}/${appConfig.targetYear}?`)) {
                 registrations = {};
                 saveData();
                 if (supabaseClient) {
@@ -580,7 +616,7 @@
                 }
                 renderDaysGrid();
                 renderAdminRegsTable();
-                showToast('Đã xóa toàn bộ dữ liệu đăng ký Tháng 7/2026!', 'info');
+                showToast(`Đã xóa toàn bộ dữ liệu đăng ký Tháng ${mStr}/${appConfig.targetYear}!`, 'info');
             }
         });
 
@@ -606,7 +642,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 8. Dynamic Renders
+    // 8. Helpers & Renders
     // ----------------------------------------------------------------------
     function renderEmployeeDropdown() {
         selectEmployee.innerHTML = '<option value="">-- Chọn Mã Nhân Viên - Tên Nhân Viên --</option>';
@@ -646,7 +682,7 @@
         const regDates = Object.keys(registrations).sort();
 
         if (regDates.length === 0) {
-            adminRegsTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Chưa có lượt đăng ký nào trong Tháng 7/2026.</td></tr>';
+            adminRegsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Chưa có lượt đăng ký nào.</td></tr>';
             return;
         }
 
@@ -660,7 +696,6 @@
                 <td><strong>${dateFormatted.split('-').reverse().join('/')}</strong></td>
                 <td>${dayName}</td>
                 <td><span style="color:#15803d; font-weight:700;">${escapeHtml(reg.empCode)} - ${escapeHtml(reg.empName)}</span></td>
-                <td>${escapeHtml(reg.note || '-')}</td>
                 <td>
                     <button class="btn btn-danger btn-sm btn-admin-cancel-reg" data-date="${dateFormatted}">
                         <i class="fa-solid fa-xmark"></i> Hủy Đăng Ký
@@ -673,21 +708,26 @@
 
     function exportToCSV() {
         let csvContent = "\uFEFF";
-        csvContent += "STT,Ngày Đăng Ký,Thứ,Mã Nhân Viên,Tên Nhân Viên,Ghi Chú,Thời Gian Đăng Ký\n";
+        csvContent += "STT,Ngày Đăng Ký,Thứ,Mã Nhân Viên,Tên Nhân Viên,Thời Gian Đăng Ký\n";
+
+        const targetMonth = appConfig.targetMonth ?? 6;
+        const targetYear = appConfig.targetYear ?? 2026;
+        const totalDaysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const mStr = String(targetMonth + 1).padStart(2, '0');
 
         let count = 0;
-        for (let dayNum = 1; dayNum <= DAYS_IN_JULY; dayNum++) {
-            const dateObj = new Date(TARGET_YEAR, TARGET_MONTH, dayNum);
+        for (let dayNum = 1; dayNum <= totalDaysInMonth; dayNum++) {
+            const dateObj = new Date(targetYear, targetMonth, dayNum);
             const dayOfWeekIndex = dateObj.getDay();
             const dayName = DAY_NAMES[dayOfWeekIndex];
-            const dateFormatted = `${TARGET_YEAR}-${String(TARGET_MONTH + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-            const displayDateStr = `${String(dayNum).padStart(2, '0')}/07/${TARGET_YEAR}`;
+            const dateFormatted = `${targetYear}-${mStr}-${String(dayNum).padStart(2, '0')}`;
+            const displayDateStr = `${String(dayNum).padStart(2, '0')}/${mStr}/${targetYear}`;
 
             const reg = registrations[dateFormatted];
 
             if (reg) {
                 count++;
-                csvContent += `${count},"${displayDateStr}","${dayName}","${reg.empCode}","${reg.empName}","${reg.note || ''}","${reg.time || ''}"\n`;
+                csvContent += `${count},"${displayDateStr}","${dayName}","${reg.empCode}","${reg.empName}","${reg.time || ''}"\n`;
             }
         }
 
@@ -700,7 +740,7 @@
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `Danh_Sach_Dang_Ky_Nghi_Phep_Thang_07_2026.csv`);
+        link.setAttribute("download", `Danh_Sach_Dang_Ky_Nghi_Phep_Thang_${mStr}_${targetYear}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

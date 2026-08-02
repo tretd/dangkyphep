@@ -10,7 +10,7 @@
     --apple-muted: #64748b;
     --apple-border: rgba(0, 0, 0, 0.06);
     
-    /* Blue Card (Chưa Đăng Ký) - Soft Ceramic Cyan Blue */
+    /* Blue Card (Chưa Đăng Ký - Bấm để chọn) */
     --blue-card-bg: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
     --blue-card-border: #bae6fd;
     --blue-date-color: #0369a1;
@@ -18,14 +18,14 @@
     --blue-btn-bg: #0284c7;
     --blue-btn-hover: #0369a1;
     
-    /* Green Card (Đã Đăng Ký) - Soft Sage Emerald Green */
+    /* Green Card (Đã Đăng Ký) */
     --green-card-bg: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
     --green-card-border: #86efac;
     --green-date-color: #15803d;
     --green-day-color: #16a34a;
     --green-name-color: #14532d;
     
-    /* Red Card (Chủ Nhật) - Soft Coral Rose Red */
+    /* Red Card (Chủ Nhật) */
     --red-card-bg: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
     --red-card-border: #fecdd3;
     --red-date-color: #e11d48;
@@ -304,7 +304,7 @@ body.apple-theme {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 128px;
+    min-height: 124px;
     box-shadow: var(--shadow-apple);
     transition: var(--transition);
     position: relative;
@@ -344,23 +344,47 @@ body.apple-theme {
     display: flex;
     align-items: center;
     font-size: 13px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
-/* 🔵 BLUE CARD: CHƯA ĐĂNG KÝ (SOFT CERAMIC BLUE) */
+/* 🔵 BLUE CARD: CHƯA ĐĂNG KÝ (DIRECT CLICKABLE) */
 .compact-card.card-blue {
     background: var(--blue-card-bg);
-    border: 1px solid var(--blue-card-border);
+    border: 1.5px solid var(--blue-card-border);
+    cursor: pointer;
+}
+
+.compact-card.card-blue:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 10px 24px rgba(2, 132, 199, 0.15);
+}
+
+.compact-card.card-blue:active {
+    transform: scale(0.98);
 }
 
 .compact-card.card-blue .card-date-badge { color: var(--blue-date-color); }
 .compact-card.card-blue .card-day-name { color: var(--blue-day-color); }
-.compact-card.card-blue .card-body-text { color: #64748b; font-style: italic; }
+.compact-card.card-blue .card-body-text { color: #0369a1; font-style: italic; }
 
-/* 🟢 GREEN CARD: ĐÃ ĐĂNG KÝ (SOFT SAGE GREEN - HIỂN THỊ RÕ RÀNG MÃ NV - TÊN NV) */
+.click-to-select-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(2, 132, 199, 0.1);
+    color: #0284c7;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid rgba(2, 132, 199, 0.2);
+    width: fit-content;
+}
+
+/* 🟢 GREEN CARD: ĐÃ ĐĂNG KÝ */
 .compact-card.card-green {
     background: var(--green-card-bg);
-    border: 1px solid var(--green-card-border);
+    border: 1.5px solid var(--green-card-border);
 }
 
 .compact-card.card-green .card-date-badge { color: var(--green-date-color); }
@@ -383,12 +407,13 @@ body.apple-theme {
     font-size: 11px;
     font-weight: 700;
     border: 1px solid #bbf7d0;
+    width: fit-content;
 }
 
-/* 🔴 RED CARD: CHỦ NHẬT (SOFT CORAL RED) */
+/* 🔴 RED CARD: CHỦ NHẬT */
 .compact-card.card-red {
     background: var(--red-card-bg);
-    border: 1px solid var(--red-card-border);
+    border: 1.5px solid var(--red-card-border);
 }
 
 .compact-card.card-red .card-date-badge { color: var(--red-date-color); }
@@ -404,21 +429,20 @@ body.apple-theme {
     font-weight: 700;
 }
 
-/* BUTTONS (APPLE CAPSULE STYLE) */
+/* BUTTONS */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 7px 14px;
+    padding: 8px 16px;
     border-radius: var(--radius-pill);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
     border: none;
     transition: var(--transition);
     text-decoration: none;
-    width: 100%;
 }
 
 .btn-primary {
@@ -460,9 +484,7 @@ body.apple-theme {
     width: auto;
 }
 
-/* ==========================================================================
-   COUNTDOWN TIMER OVERLAY & APPLE FROSTED GLASS SHIELD
-   ========================================================================== */
+/* COUNTDOWN TIMER OVERLAY */
 .countdown-overlay {
     position: absolute;
     top: 0;
@@ -572,9 +594,7 @@ body.apple-theme {
     display: inline-block;
 }
 
-/* ==========================================================================
-   MODALS STYLING (APPLE macOS STYLE)
-   ========================================================================== */
+/* MODALS STYLING */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -662,9 +682,7 @@ body.apple-theme {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.apple-tab-bar .tab-btn:hover:not(.active) {
-    color: #0f172a;
-}
+.apple-tab-bar .tab-btn:hover:not(.active) { color: #0f172a; }
 
 .tab-content { display: none; }
 .tab-content.active { display: block; }
@@ -747,7 +765,6 @@ body.apple-theme {
 .toast-error { border-left: 4px solid #e11d48; }
 .toast-warning { border-left: 4px solid #d97706; }
 
-/* Responsive adjustments */
 @media (max-width: 640px) {
     .apple-tab-bar { grid-template-columns: repeat(2, 1fr); gap: 6px; }
     .apple-tab-bar .tab-btn span { font-size: 11px; }

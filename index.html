@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Đăng Ký Nghỉ Phép - Tháng 7/2026</title>
+    <title>Hệ Thống Đăng Ký Nghỉ Phép</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,7 @@
 </head>
 <body class="apple-theme">
 
-    <!-- Header Section (HTML5 Vector Graphics) -->
+    <!-- Header Section -->
     <header class="app-header apple-header">
         <div class="container header-container">
             <div class="brand">
@@ -24,8 +24,8 @@
                     <i class="fa-solid fa-calendar-check"></i>
                 </div>
                 <div class="brand-text">
-                    <h1>ĐĂNG KÝ NGHỈ PHÉP</h1>
-                    <p class="subtitle">THÁNG 07 / 2026 • TỐI ĐA 1 NGƯỜI / NGÀY</p>
+                    <h1 id="appHeaderTitle">ĐĂNG KÝ NGHỈ PHÉP</h1>
+                    <p class="subtitle" id="appHeaderSub">THÁNG 07 / 2026 • TỐI ĐA 1 NGƯỜI / NGÀY</p>
                 </div>
             </div>
 
@@ -35,7 +35,7 @@
                     <span class="status-text" id="statusText">Đang kiểm tra...</span>
                 </div>
                 
-                <!-- Admin Lock Key Button (Pure Vector SVG Icon) -->
+                <!-- Admin Lock Key Button -->
                 <button class="key-btn apple-key-btn" id="btnAdminKey" title="Cấu Hình Trưởng Nhóm">
                     <i class="fa-solid fa-key"></i>
                 </button>
@@ -46,14 +46,14 @@
     <!-- Main Content Container -->
     <main class="container main-content position-relative">
         
-        <!-- Search & Filter Bar (HTML5 Vector Control) -->
+        <!-- Search & Filter Bar -->
         <div class="filter-bar apple-panel">
             <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" id="searchInput" placeholder="Tìm theo Ngày, Thứ, Mã NV hoặc Tên NV...">
             </div>
             <div class="filter-options">
-                <button class="filter-btn active" data-filter="all">Tất cả (31)</button>
+                <button class="filter-btn active" data-filter="all">Tất cả</button>
                 <button class="filter-btn" data-filter="available">Còn trống</button>
                 <button class="filter-btn" data-filter="registered">Đã đăng ký</button>
                 <button class="filter-btn" data-filter="sunday">Chủ Nhật</button>
@@ -62,9 +62,9 @@
 
         <!-- Days Grid Header & Legend -->
         <div class="days-grid-header">
-            <span class="section-title"><i class="fa-solid fa-calendar-days"></i> Lịch Đăng Ký Tháng 07/2026</span>
+            <span class="section-title" id="gridTitleSection"><i class="fa-solid fa-calendar-days"></i> Lịch Đăng Ký Tháng 07/2026</span>
             <span class="legend">
-                <span class="legend-item"><span class="dot dot-available"></span> Chưa đăng ký (Xanh dương)</span>
+                <span class="legend-item"><span class="dot dot-available"></span> Chưa đăng ký (Xanh dương - Bấm để chọn)</span>
                 <span class="legend-item"><span class="dot dot-registered"></span> Đã đăng ký (Xanh lá)</span>
                 <span class="legend-item"><span class="dot dot-sunday"></span> Chủ nhật (Đỏ - Khóa)</span>
             </span>
@@ -146,7 +146,7 @@
         </div>
     </div>
 
-    <!-- Modal: Register Leave (Employee) -->
+    <!-- Modal: Register Leave (Employee - Direct Selection, No Note Field) -->
     <div class="modal-overlay" id="registerModal">
         <div class="modal-content apple-card">
             <div class="modal-header">
@@ -157,7 +157,7 @@
                 <div class="selected-day-banner">
                     <i class="fa-solid fa-calendar-day"></i>
                     <div>
-                        <div class="selected-date-title" id="modalDateTitle">Thứ ..., Ngày .../07/2026</div>
+                        <div class="selected-date-title" id="modalDateTitle">Thứ ..., Ngày ...</div>
                         <div class="selected-date-sub">Quy tắc: Tối đa 01 nhân viên đăng ký cho ngày này</div>
                     </div>
                 </div>
@@ -172,15 +172,10 @@
                         </select>
                     </div>
 
-                    <div class="form-group">
-                        <label for="regNote">Ghi chú (Không bắt buộc):</label>
-                        <input type="text" id="regNote" class="form-control" placeholder="Ví dụ: Nghỉ phép năm, việc gia đình...">
-                    </div>
-
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" id="btnCancelRegister">Hủy bỏ</button>
                         <button type="submit" class="btn btn-primary" id="btnSubmitRegister">
-                            <i class="fa-solid fa-check"></i> Xác Nhận Đăng Ký
+                            <i class="fa-solid fa-floppy-disk"></i> Lưu
                         </button>
                     </div>
                 </form>
@@ -188,7 +183,7 @@
         </div>
     </div>
 
-    <!-- Modal: Admin Settings (Pure HTML5 Vector Icons) -->
+    <!-- Modal: Admin Settings -->
     <div class="modal-overlay" id="adminModal">
         <div class="modal-content modal-large apple-card">
             <div class="modal-header">
@@ -196,7 +191,7 @@
                 <button class="close-btn" id="closeAdminModal">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- HTML5 Vector Tab Bar (No Emojis) -->
+                <!-- HTML5 Vector Tab Bar -->
                 <div class="apple-tab-bar">
                     <button class="tab-btn active" data-tab="tabEmployees">
                         <i class="fa-solid fa-users"></i> <span>Nhân Viên</span>
@@ -205,7 +200,7 @@
                         <i class="fa-solid fa-calendar-check"></i> <span>Quản Lý Lịch</span>
                     </button>
                     <button class="tab-btn" data-tab="tabTimeWindow">
-                        <i class="fa-solid fa-clock"></i> <span>Thời Gian</span>
+                        <i class="fa-solid fa-clock"></i> <span>Cấu Hình Tháng & Giờ</span>
                     </button>
                     <button class="tab-btn" data-tab="tabSupabase">
                         <i class="fa-solid fa-cloud"></i> <span>Supabase</span>
@@ -260,7 +255,7 @@
                 <!-- Tab 2: Admin Manage Registrations -->
                 <div class="tab-content" id="tabManageRegs">
                     <div class="config-card">
-                        <h4><i class="fa-solid fa-calendar-check"></i> Danh Sách Lịch Đã Đăng Ký Tháng 7/2026</h4>
+                        <h4><i class="fa-solid fa-calendar-check"></i> Danh Sách Lịch Đã Đăng Ký</h4>
                         <p class="config-desc">Chỉ Trưởng nhóm mới có quyền hủy hoặc điều chỉnh lượt đăng ký nghỉ phép của nhân viên.</p>
                         <div class="table-responsive">
                             <table class="data-table">
@@ -269,7 +264,6 @@
                                         <th>Ngày</th>
                                         <th>Thứ</th>
                                         <th>Nhân Viên Đăng Ký</th>
-                                        <th>Ghi Chú</th>
                                         <th>Thao Tác Trưởng Nhóm</th>
                                     </tr>
                                 </thead>
@@ -281,8 +275,44 @@
                     </div>
                 </div>
 
-                <!-- Tab 3: Time Window Config -->
+                <!-- Tab 3: Time & Month Config (Cấu hình chọn Tháng & Giờ Mở) -->
                 <div class="tab-content" id="tabTimeWindow">
+                    
+                    <!-- Month Selector Card for Admin -->
+                    <div class="config-card">
+                        <h4><i class="fa-solid fa-calendar-days"></i> Chọn Tháng & Năm Mở Đăng Ký Lịch</h4>
+                        <p class="config-desc">Trưởng nhóm chọn Tháng/Năm nào, toàn bộ giao diện bên ngoài sẽ tự động tạo bảng lịch cho đúng tháng đó.</p>
+
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label for="configMonthSelect"><i class="fa-solid fa-calendar"></i> Chọn Tháng:</label>
+                                <select id="configMonthSelect" class="form-control">
+                                    <option value="0">Tháng 01</option>
+                                    <option value="1">Tháng 02</option>
+                                    <option value="2">Tháng 03</option>
+                                    <option value="3">Tháng 04</option>
+                                    <option value="4">Tháng 05</option>
+                                    <option value="5">Tháng 06</option>
+                                    <option value="6" selected>Tháng 07</option>
+                                    <option value="7">Tháng 08</option>
+                                    <option value="8">Tháng 09</option>
+                                    <option value="9">Tháng 10</option>
+                                    <option value="10">Tháng 11</option>
+                                    <option value="11">Tháng 12</option>
+                                </select>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="configYearSelect"><i class="fa-solid fa-calendar-week"></i> Chọn Năm:</label>
+                                <select id="configYearSelect" class="form-control">
+                                    <option value="2025">Năm 2025</option>
+                                    <option value="2026" selected>Năm 2026</option>
+                                    <option value="2027">Năm 2027</option>
+                                    <option value="2028">Năm 2028</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="config-card">
                         <h4><i class="fa-solid fa-clock"></i> Cấu Hình Khung Thời Gian Đặt Lịch</h4>
                         <p class="config-desc">Khi chưa đến thời gian Bắt đầu, giao diện bên ngoài sẽ hiển thị **Đồng Hồ Đếm Ngược** và **Che Mờ Lớp Lịch** bên dưới.</p>
@@ -305,16 +335,16 @@
 
                         <div class="action-buttons margin-top">
                             <button type="button" class="btn btn-primary" id="btnSaveTimeConfig">
-                                <i class="fa-solid fa-floppy-disk"></i> Lưu Thời Gian Đăng Ký
+                                <i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hình Tháng & Thời Gian
                             </button>
                         </div>
                     </div>
 
                     <div class="config-card margin-top danger-zone">
                         <h4 class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Đặt Lại Dữ Liệu Đăng Ký</h4>
-                        <p>Trưởng nhóm có thể xóa tất cả lượt đăng ký nghỉ phép của Tháng 7/2026.</p>
+                        <p>Trưởng nhóm có thể xóa tất cả lượt đăng ký nghỉ phép của tháng hiện tại.</p>
                         <button type="button" class="btn btn-danger" id="btnClearAllRegs">
-                            <i class="fa-solid fa-trash-can"></i> Xóa Tất Cả Đăng Ký Tháng 7/2026
+                            <i class="fa-solid fa-trash-can"></i> Xóa Tất Cả Đăng Ký Tháng Hiện Tại
                         </button>
                     </div>
                 </div>
