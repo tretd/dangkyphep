@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   JavaScript Application Core (Streamlined Text: LỊCH ĐĂNG KÝ)
+   JavaScript Application Core (No "Hệ Thống" Word Prefix)
    ========================================================================== */
 
 (function () {
@@ -275,7 +275,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 5. Countdown Ticker & Fixed Top Status Banner (Friendly "LỊCH" Text)
+    // 5. Countdown Ticker & Fixed Top Status Banner (No "Hệ Thống" Prefix)
     // ----------------------------------------------------------------------
     function startCountdownTicker() {
         if (timerInterval) clearInterval(timerInterval);
@@ -292,7 +292,7 @@
             countdownOverlay.style.display = 'none';
             topStatusBanner.className = 'top-status-banner open';
             bannerIcon.className = 'fa-solid fa-lock-open';
-            bannerText.textContent = `HỆ THỐNG ĐANG MỞ ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
+            bannerText.textContent = `ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
             return;
         }
 
@@ -316,7 +316,7 @@
             cdMins.textContent = String(mins).padStart(2, '0');
             cdSecs.textContent = String(secs).padStart(2, '0');
 
-            cdDescText.textContent = `Hệ thống sẽ tự động mở lịch đăng ký vào lúc: ${formatDateTime(start)}`;
+            cdDescText.textContent = `Tự động mở lịch đăng ký vào lúc: ${formatDateTime(start)}`;
             return;
         }
 
@@ -337,7 +337,7 @@
         countdownOverlay.style.display = 'none';
         topStatusBanner.className = 'top-status-banner open';
         bannerIcon.className = 'fa-solid fa-lock-open';
-        bannerText.textContent = `HỆ THỐNG ĐANG MỞ ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
+        bannerText.textContent = `ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
     }
 
     function formatDateTime(d) {
