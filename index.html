@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Đăng Ký Nghỉ Phép - Tháng 7/2026</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header class="app-header">
+        <div class="container header-container">
+            <div class="brand">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>ĐĂNG KÝ NGHỈ PHÉP</h1>
+                    <p class="subtitle">Tháng 07 / 2026 • Mỗi ngày tối đa 1 người đăng ký</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="status-indicator" id="regStatusIndicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text" id="statusText">Đang kiểm tra thời gian...</span>
+                </div>
+                <button class="btn btn-secondary" id="btnAdminModal">
+                    <i class="fa-solid fa-user-gear"></i> Cấu Hình Trưởng Nhóm
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Info Banner & Filters -->
+    <main class="container main-content">
+        <div class="info-card">
+            <div class="info-item">
+                <i class="fa-solid fa-clock"></i>
+                <div>
+                    <strong>Khung thời gian đăng ký:</strong>
+                    <span id="displayTimeWindow">Chưa thiết lập</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <i class="fa-solid fa-users"></i>
+                <div>
+                    <strong>Tổng số nhân viên:</strong>
+                    <span id="displayEmpCount">0 nhân viên</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <i class="fa-solid fa-calendar-day"></i>
+                <div>
+                    <strong>Đã đăng ký:</strong>
+                    <span id="displayRegCount">0 / 27 ngày làm việc</span>
+                </div>
+            </div>
+            <button class="btn btn-outline" id="btnExportExcel">
+                <i class="fa-solid fa-file-excel"></i> Xuất Excel / CSV
+            </button>
+        </div>
+
+        <!-- Notification Banner -->
+        <div class="alert alert-warning" id="timeRestrictionAlert" style="display: none;">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span id="alertMessage">Hiện tại không nằm trong khung giờ đăng ký! Thao tác đăng ký đã bị khóa.</span>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div class="filter-bar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="Tìm theo Ngày, Thứ, Mã NV hoặc Tên NV...">
+            </div>
+            <div class="filter-options">
+                <button class="filter-btn active" data-filter="all">Tất cả (31)</button>
+                <button class="filter-btn" data-filter="available">Còn trống</button>
+                <button class="filter-btn" data-filter="registered">Đã đăng ký</button>
+                <button class="filter-btn" data-filter="sunday">Chủ Nhật</button>
+            </div>
+        </div>
+
+        <!-- Days List Grid -->
+        <div class="days-grid-header">
+            <span>Danh Sách Các Ngày Tháng 07/2026</span>
+            <span class="legend">
+                <span class="legend-item"><span class="dot dot-available"></span> Còn trống</span>
+                <span class="legend-item"><span class="dot dot-registered"></span> Đã đăng ký</span>
+                <span class="legend-item"><span class="dot dot-sunday"></span> Chủ nhật (Khóa)</span>
+            </span>
+        </div>
+
+        <div class="days-list" id="daysList">
+            <!-- Dynamic days rendered by app.js -->
+        </div>
+    </main>
+
+    <!-- Modal: Register Leave (Employee) -->
+    <div class="modal-overlay" id="registerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen-to-square"></i> Đăng Ký Nghỉ Phép</h3>
+                <button class="close-btn" id="closeRegisterModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="selected-day-banner">
+                    <i class="fa-solid fa-calendar-day"></i>
+                    <div>
+                        <div class="selected-date-title" id="modalDateTitle">Thứ ..., Ngày .../07/2026</div>
+                        <div class="selected-date-sub">Mỗi ngày chỉ được phép 01 nhân viên đăng ký</div>
+                    </div>
+                </div>
+
+                <form id="registerForm">
+                    <input type="hidden" id="modalDateInput">
+                    
+                    <div class="form-group">
+                        <label for="selectEmployee">Chọn Nhân Viên (Mã NV - Tên NV): <span class="required">*</span></label>
+                        <select id="selectEmployee" required class="form-control">
+                            <option value="">-- Chọn Mã Nhân Viên - Tên Nhân Viên --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="regNote">Ghi chú (Không bắt buộc):</label>
+                        <input type="text" id="regNote" class="form-control" placeholder="Nhập ghi chú nếu có (ví dụ: Nghỉ phép năm...)">
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="btnCancelRegister">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmitRegister">
+                            <i class="fa-solid fa-check"></i> Xác Nhận Đăng Ký
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Admin Settings (Trưởng Nhóm Cấu Hình) -->
+    <div class="modal-overlay" id="adminModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-shield"></i> Cấu Hình Trưởng Nhóm</h3>
+                <button class="close-btn" id="closeAdminModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Admin Tabs -->
+                <div class="admin-tabs">
+                    <button class="tab-btn active" data-tab="tabEmployees"><i class="fa-solid fa-id-card"></i> Danh Sách Nhân Viên</button>
+                    <button class="tab-btn" data-tab="tabTimeWindow"><i class="fa-solid fa-clock-rotate-left"></i> Thời Gian Đăng Ký</button>
+                    <button class="tab-btn" data-tab="tabSupabase"><i class="fa-solid fa-database"></i> Tích Hợp Database (Supabase)</button>
+                </div>
+
+                <!-- Tab 1: Manage Employees -->
+                <div class="tab-content active" id="tabEmployees">
+                    <div class="add-emp-card">
+                        <h4>Thêm Nhân Viên Mới</h4>
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label>Mã Nhân Viên:</label>
+                                <input type="text" id="newEmpId" class="form-control" placeholder="VD: NV001">
+                            </div>
+                            <div class="form-group flex-2">
+                                <label>Tên Nhân Viên:</label>
+                                <input type="text" id="newEmpName" class="form-control" placeholder="VD: Nguyễn Văn A">
+                            </div>
+                            <div class="form-group btn-align-bottom">
+                                <button type="button" class="btn btn-primary" id="btnAddEmployee">
+                                    <i class="fa-solid fa-plus"></i> Thêm NV
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4>Danh Sách Nhân Viên Cấu Hình (<span id="empTableCount">0</span>)</h4>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Mã Nhân Viên</th>
+                                    <th>Tên Nhân Viên</th>
+                                    <th>Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="empTableBody">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Time Window Config -->
+                <div class="tab-content" id="tabTimeWindow">
+                    <div class="config-card">
+                        <h4>Cấu Hình Khung Thời Gian Được Phép Chọn</h4>
+                        <p class="config-desc">Nhân viên chỉ có thể thực hiện đăng ký nghỉ phép trong khoảng thời gian được mở dưới đây.</p>
+
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label for="startTimeInput"><i class="fa-solid fa-calendar-plus"></i> Thời Gian Bắt Đầu:</label>
+                                <input type="datetime-local" id="startTimeInput" class="form-control">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="endTimeInput"><i class="fa-solid fa-calendar-minus"></i> Thời Gian Kết Thúc:</label>
+                                <input type="datetime-local" id="endTimeInput" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="time-quick-set">
+                            <span>Thiết lập nhanh:</span>
+                            <button type="button" class="btn-chip" id="btnSetOpenNow">Mở Đăng Ký Ngay Bây Giờ (Không giới hạn)</button>
+                        </div>
+
+                        <div class="action-buttons margin-top">
+                            <button type="button" class="btn btn-primary" id="btnSaveTimeConfig">
+                                <i class="fa-solid fa-floppy-disk"></i> Lưu Khung Thời Gian
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="config-card margin-top danger-zone">
+                        <h4 class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Quản Lý & Đặt Lại Dữ Liệu</h4>
+                        <p>Trưởng nhóm có thể hủy tất cả lượt đăng ký của Tháng 7/2026 để mở đăng ký lại từ đầu.</p>
+                        <button type="button" class="btn btn-danger" id="btnClearAllRegs">
+                            <i class="fa-solid fa-trash-can"></i> Xóa Tất Cả Đăng Ký Tháng 7/2026
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Supabase Config -->
+                <div class="tab-content" id="tabSupabase">
+                    <div class="config-card">
+                        <h4><i class="fa-solid fa-cloud"></i> Tích Hợp Cơ Sở Dữ Liệu Supabase (Miễn Phí)</h4>
+                        <p>Ứng dụng đang chạy ở chế độ **Real-time Local Storage / Cloud Ready**. Nhập thông tin Dự án Supabase của bạn bên dưới để đồng bộ dữ liệu Real-time trực tuyến giữa tất cả nhân viên!</p>
+
+                        <div class="form-group">
+                            <label for="supabaseUrl">Supabase URL:</label>
+                            <input type="text" id="supabaseUrl" class="form-control" placeholder="https://your-project.supabase.co">
+                        </div>
+                        <div class="form-group">
+                            <label for="supabaseKey">Supabase Anon Key:</label>
+                            <input type="password" id="supabaseKey" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                        </div>
+
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-primary" id="btnSaveSupabase">
+                                <i class="fa-solid fa-link"></i> Kết Nối Supabase
+                            </button>
+                            <button type="button" class="btn btn-outline" id="btnDisconnectSupabase">
+                                Dùng Chế Độ LocalStorage Demo
+                            </button>
+                        </div>
+                        <div id="supabaseStatusAlert" class="margin-top"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification System -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
