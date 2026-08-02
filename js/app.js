@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép - Tháng 07/2026
-   JavaScript Application Core (Futuristic Theme + Passcode Cuong@032 + Countdown)
+   JavaScript Application Core (Light Theme + Compact Grid Cards + Admin Only Cancel)
    ========================================================================== */
 
 (function () {
@@ -10,17 +10,15 @@
     const TARGET_YEAR = 2026;
     const TARGET_MONTH = 6; // 0-indexed: 6 = July
     const DAYS_IN_JULY = 31;
-    const ADMIN_PASSCODE = 'Cuong@032'; // Required password for Trưởng nhóm
+    const ADMIN_PASSCODE = 'Cuong@032';
 
-    // LocalStorage Keys
-    const STORAGE_EMPLOYEES = 'leave_app_employees_v2';
-    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v2';
-    const STORAGE_CONFIG = 'leave_app_config_v2';
-    const STORAGE_SUPABASE = 'leave_app_supabase_v2';
+    const STORAGE_EMPLOYEES = 'leave_app_employees_v3';
+    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v3';
+    const STORAGE_CONFIG = 'leave_app_config_v3';
+    const STORAGE_SUPABASE = 'leave_app_supabase_v3';
 
-    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v2') : null;
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v3') : null;
 
-    // Default Initial Data
     const DEFAULT_EMPLOYEES = [
         { code: 'NV001', name: 'Nguyễn Văn An' },
         { code: 'NV002', name: 'Trần Thị Bình' },
@@ -35,7 +33,6 @@
         isOpenAlways: true
     };
 
-    // Application State
     let employees = [];
     let registrations = {};
     let appConfig = { ...DEFAULT_CONFIG };
@@ -56,7 +53,7 @@
     const regStatusIndicator = document.getElementById('regStatusIndicator');
     const statusText = document.getElementById('statusText');
 
-    // Countdown Overlay Elements
+    // Countdown Overlay
     const countdownOverlay = document.getElementById('countdownOverlay');
     const cdDescText = document.getElementById('cdDescText');
     const cdDays = document.getElementById('cdDays');
@@ -64,7 +61,7 @@
     const cdMins = document.getElementById('cdMins');
     const cdSecs = document.getElementById('cdSecs');
 
-    // Key Button & Password Modal Elements
+    // Key & Passcode Modal
     const btnAdminKey = document.getElementById('btnAdminKey');
     const passwordModal = document.getElementById('passwordModal');
     const closePasswordModal = document.getElementById('closePasswordModal');
@@ -73,7 +70,7 @@
     const adminPassInput = document.getElementById('adminPassInput');
     const passErrorMsg = document.getElementById('passErrorMsg');
 
-    // Register Modal Elements
+    // Register Modal
     const registerModal = document.getElementById('registerModal');
     const closeRegisterModal = document.getElementById('closeRegisterModal');
     const btnCancelRegister = document.getElementById('btnCancelRegister');
@@ -83,27 +80,26 @@
     const selectEmployee = document.getElementById('selectEmployee');
     const regNote = document.getElementById('regNote');
 
-    // Admin Modal Elements
+    // Admin Modal
     const adminModal = document.getElementById('adminModal');
     const closeAdminModal = document.getElementById('closeAdminModal');
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    // Admin Employee Elements
+    // Admin Tabs Content
     const newEmpId = document.getElementById('newEmpId');
     const newEmpName = document.getElementById('newEmpName');
     const btnAddEmployee = document.getElementById('btnAddEmployee');
     const empTableBody = document.getElementById('empTableBody');
     const empTableCount = document.getElementById('empTableCount');
+    const adminRegsTableBody = document.getElementById('adminRegsTableBody');
 
-    // Admin Time Config Elements
     const startTimeInput = document.getElementById('startTimeInput');
     const endTimeInput = document.getElementById('endTimeInput');
     const btnSaveTimeConfig = document.getElementById('btnSaveTimeConfig');
     const btnSetOpenNow = document.getElementById('btnSetOpenNow');
     const btnClearAllRegs = document.getElementById('btnClearAllRegs');
 
-    // Admin Supabase Elements
     const supabaseUrl = document.getElementById('supabaseUrl');
     const supabaseKey = document.getElementById('supabaseKey');
     const btnSaveSupabase = document.getElementById('btnSaveSupabase');
@@ -118,21 +114,22 @@
         loadData();
         setupEventListeners();
         initSupabaseIfConfigured();
-        renderDaysList();
+        renderDaysGrid();
         renderEmployeeDropdown();
         renderAdminEmployeeTable();
+        renderAdminRegsTable();
         updateDashboardStats();
 
-        // Start countdown ticker interval
         startCountdownTicker();
 
         if (syncChannel) {
             syncChannel.onmessage = (event) => {
                 if (event.data && event.data.type === 'DATA_UPDATED') {
                     loadData();
-                    renderDaysList();
+                    renderDaysGrid();
+                    renderAdminRegsTable();
                     updateDashboardStats();
-                    showToast('Dữ liệu đăng ký vừa được cập nhật từ thiết bị khác!', 'info');
+                    showToast('Dữ liệu vừa được cập nhật từ thiết bị khác!', 'info');
                 }
             };
         }
@@ -170,23 +167,23 @@
     }
 
     // ----------------------------------------------------------------------
-    // 4. Supabase Integration
+    // 4. Supabase Realtime Integration
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
         if (window.supabase && supabaseConfig.url && supabaseConfig.key) {
             try {
                 supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.key);
                 supabaseStatusAlert.innerHTML = `
-                    <div class="alert alert-warning" style="background:rgba(16, 185, 129, 0.15); border-color:#34d399; color:#6ee7b7;">
-                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Realtime thành công!
+                    <div class="alert alert-warning" style="background:#ecfdf5; border-color:#a7f3d0; color:#047857;">
+                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud thành công!
                     </div>`;
                 fetchSupabaseData();
             } catch (err) {
-                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#f87171;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
+                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#dc2626;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
             }
         } else {
             supabaseStatusAlert.innerHTML = `
-                <div class="alert alert-warning" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.1); color:#94a3b8;">
+                <div class="alert alert-warning" style="background:#f8fafc; border-color:#cbd5e1; color:#64748b;">
                     <i class="fa-solid fa-info-circle"></i> Đang chạy ở chế độ **Local Demo**. Thêm URL & Key để bật Cloud Realtime.
                 </div>`;
         }
@@ -208,7 +205,8 @@
                 });
                 registrations = cloudRegs;
                 saveData();
-                renderDaysList();
+                renderDaysGrid();
+                renderAdminRegsTable();
             }
         } catch (e) {
             console.log('Supabase sync error', e);
@@ -216,7 +214,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 5. Countdown Clock & Frosted Shield Ticker
+    // 5. Countdown Ticker Logic
     // ----------------------------------------------------------------------
     function startCountdownTicker() {
         if (timerInterval) clearInterval(timerInterval);
@@ -237,7 +235,6 @@
         const start = appConfig.startTime ? new Date(appConfig.startTime) : null;
         const end = appConfig.endTime ? new Date(appConfig.endTime) : null;
 
-        // Future start time -> Show Countdown Overlay & Frosted Glass Blur
         if (start && now < start) {
             countdownOverlay.style.display = 'flex';
             regStatusIndicator.className = 'status-indicator closed';
@@ -254,11 +251,10 @@
             cdMins.textContent = String(mins).padStart(2, '0');
             cdSecs.textContent = String(secs).padStart(2, '0');
 
-            cdDescText.textContent = `Hệ thống đăng ký nghỉ phép sẽ tự động mở vào: ${formatDateTime(start)}`;
+            cdDescText.textContent = `Hệ thống sẽ tự động mở cổng đăng ký vào lúc: ${formatDateTime(start)}`;
             return;
         }
 
-        // Passed end time -> Closed
         if (end && now > end) {
             countdownOverlay.style.display = 'flex';
             regStatusIndicator.className = 'status-indicator closed';
@@ -272,7 +268,6 @@
             return;
         }
 
-        // Currently open
         countdownOverlay.style.display = 'none';
         regStatusIndicator.className = 'status-indicator open';
         statusText.textContent = 'Đang Mở Đăng Ký';
@@ -289,9 +284,9 @@
     }
 
     // ----------------------------------------------------------------------
-    // 6. Render July 2026 Calendar Grid
+    // 6. Render Compact Card Grid Layout
     // ----------------------------------------------------------------------
-    function renderDaysList() {
+    function renderDaysGrid() {
         daysListEl.innerHTML = '';
 
         for (let dayNum = 1; dayNum <= DAYS_IN_JULY; dayNum++) {
@@ -301,10 +296,10 @@
             const isSunday = (dayOfWeekIndex === 0);
 
             const dateFormatted = `${TARGET_YEAR}-${String(TARGET_MONTH + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-            const displayDateStr = `${String(dayNum).padStart(2, '0')}/07/${TARGET_YEAR}`;
+            const displayDateStr = `${String(dayNum).padStart(2, '0')}/07`;
             const existingReg = registrations[dateFormatted];
 
-            // Apply Filters & Search
+            // Filter logic
             if (activeFilter === 'available' && (isSunday || existingReg)) continue;
             if (activeFilter === 'registered' && !existingReg) continue;
             if (activeFilter === 'sunday' && !isSunday) continue;
@@ -317,72 +312,57 @@
             }
 
             const card = document.createElement('div');
-            card.className = `day-card ${isSunday ? 'is-sunday' : ''}`;
 
-            // Left Date Info
-            let dateHtml = `
-                <div class="day-info">
-                    <div class="date-box">
-                        <span class="date-num">${String(dayNum).padStart(2, '0')}</span>
-                        <span class="date-month">THÁNG 7</span>
-                    </div>
-                    <div class="day-details">
-                        <span class="day-name">${dayName}</span>
-                        <span class="full-date-str">${displayDateStr}</span>
-                    </div>
-                </div>
-            `;
-
-            // Middle Info
-            let detailsHtml = '';
+            // 1. RED CARD: SUNDAY
             if (isSunday) {
-                detailsHtml = `
-                    <div class="reg-details">
-                        <span class="sunday-badge">
-                            <i class="fa-solid fa-ban"></i> Chủ Nhật - Không cho phép đăng ký
-                        </span>
+                card.className = 'compact-card card-red';
+                card.innerHTML = `
+                    <div class="card-top">
+                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/07</span>
+                        <span class="card-day-name">${dayName}</span>
                     </div>
-                `;
-            } else if (existingReg) {
-                detailsHtml = `
-                    <div class="reg-details">
-                        <div class="registered-badge">
-                            <i class="fa-solid fa-circle-check"></i>
-                            <div>
-                                <div class="emp-code-name">${escapeHtml(existingReg.empCode)} - ${escapeHtml(existingReg.empName)}</div>
-                                ${existingReg.note ? `<div style="font-size:12px; color:#a7f3d0;">Ghi chú: ${escapeHtml(existingReg.note)}</div>` : ''}
-                                <div class="reg-time-stamp">Đã đăng ký lúc: ${existingReg.time || 'N/A'}</div>
-                            </div>
-                        </div>
+                    <div class="card-body-text">
+                        <i class="fa-solid fa-ban"></i> Chủ Nhật - Không chọn
                     </div>
-                `;
-            } else {
-                detailsHtml = `
-                    <div class="reg-details">
-                        <span class="available-tag"><i class="fa-regular fa-circle"></i> Ngày này chưa có ai đăng ký</span>
+                    <div class="sunday-tag">
+                        <i class="fa-solid fa-lock"></i> Khóa lịch
                     </div>
                 `;
             }
-
-            // Right Action Button
-            let actionHtml = '';
-            if (isSunday) {
-                actionHtml = `<button class="btn btn-outline btn-sm" disabled style="opacity:0.4; cursor:not-allowed;"><i class="fa-solid fa-lock"></i> Khóa</button>`;
-            } else if (existingReg) {
-                actionHtml = `
-                    <button class="btn btn-danger btn-sm btn-cancel-reg" data-date="${dateFormatted}">
-                        <i class="fa-solid fa-xmark"></i> Hủy Đăng Ký
-                    </button>
+            // 2. GREEN CARD: REGISTERED (NO CANCEL BUTTON FOR PUBLIC STAFF!)
+            else if (existingReg) {
+                card.className = 'compact-card card-green';
+                card.innerHTML = `
+                    <div class="card-top">
+                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/07</span>
+                        <span class="card-day-name">${dayName}</span>
+                    </div>
+                    <div class="card-body-text">
+                        <i class="fa-solid fa-user-check" style="margin-right:6px; color:#059669;"></i>
+                        ${escapeHtml(existingReg.empCode)} - ${escapeHtml(existingReg.empName)}
+                    </div>
+                    <div class="registered-tag">
+                        <i class="fa-solid fa-check"></i> Đã đăng ký
+                    </div>
                 `;
-            } else {
-                actionHtml = `
-                    <button class="btn btn-primary btn-glow btn-sm btn-open-reg" data-date="${dateFormatted}" data-title="${dayName}, Ngày ${displayDateStr}">
+            }
+            // 3. BLUE CARD: AVAILABLE / UNREGISTERED
+            else {
+                card.className = 'compact-card card-blue';
+                card.innerHTML = `
+                    <div class="card-top">
+                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/07</span>
+                        <span class="card-day-name">${dayName}</span>
+                    </div>
+                    <div class="card-body-text">
+                        <i class="fa-regular fa-circle" style="margin-right:6px;"></i> Ngày này chưa chọn
+                    </div>
+                    <button class="btn btn-primary btn-open-reg" data-date="${dateFormatted}" data-title="${dayName}, Ngày ${String(dayNum).padStart(2, '0')}/07/2026">
                         <i class="fa-solid fa-plus"></i> Đăng Ký
                     </button>
                 `;
             }
 
-            card.innerHTML = dateHtml + detailsHtml + actionHtml;
             daysListEl.appendChild(card);
         }
     }
@@ -392,13 +372,12 @@
     }
 
     // ----------------------------------------------------------------------
-    // 7. Event Handlers & Passcode Lock (Cuong@032)
+    // 7. Event Handlers & Admin Password Auth (Cuong@032)
     // ----------------------------------------------------------------------
     function setupEventListeners() {
-        // Search & Filter
         searchInput.addEventListener('input', (e) => {
             searchQuery = e.target.value;
-            renderDaysList();
+            renderDaysGrid();
         });
 
         filterBtns.forEach(btn => {
@@ -406,11 +385,11 @@
                 filterBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 activeFilter = btn.dataset.filter;
-                renderDaysList();
+                renderDaysGrid();
             });
         });
 
-        // Click Key Icon Button -> Open Password Modal
+        // Key Icon Button Click -> Password Auth Modal
         btnAdminKey.addEventListener('click', () => {
             adminPassInput.value = '';
             passErrorMsg.style.display = 'none';
@@ -421,24 +400,24 @@
         closePasswordModal.addEventListener('click', () => closeModal(passwordModal));
         btnCancelPass.addEventListener('click', () => closeModal(passwordModal));
 
-        // Password Verification Form Submit (Cuong@032)
+        // Submit Admin Password Form (Cuong@032)
         passwordForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const inputPass = adminPassInput.value.trim();
 
             if (inputPass === ADMIN_PASSCODE) {
                 closeModal(passwordModal);
+                renderAdminRegsTable();
                 openModal(adminModal);
-                showToast('Xác thực mật khẩu Trưởng nhóm thành công!', 'success');
+                showToast('Xác thực Trưởng nhóm thành công!', 'success');
             } else {
-                passErrorMsg.style.display = 'flex';
+                passErrorMsg.style.display = 'block';
                 adminPassInput.focus();
-                adminPassInput.select();
                 showToast('Mật khẩu không chính xác!', 'error');
             }
         });
 
-        // Open Register Modal
+        // Open Register Modal for Employee
         daysListEl.addEventListener('click', (e) => {
             const regBtn = e.target.closest('.btn-open-reg');
             if (regBtn) {
@@ -446,8 +425,8 @@
                 const titleStr = regBtn.dataset.title;
 
                 if (registrations[dateFormatted]) {
-                    showToast(`Rất tiếc! Ngày ${dateFormatted} đã được người khác đăng ký trước.`, 'error');
-                    renderDaysList();
+                    showToast(`Ngày này đã có người đăng ký trước!`, 'error');
+                    renderDaysGrid();
                     return;
                 }
 
@@ -457,26 +436,12 @@
                 selectEmployee.value = '';
                 openModal(registerModal);
             }
-
-            const cancelBtn = e.target.closest('.btn-cancel-reg');
-            if (cancelBtn) {
-                const dateFormatted = cancelBtn.dataset.date;
-                if (confirm(`Bạn có chắc chắn muốn hủy lượt đăng ký ngày ${dateFormatted}?`)) {
-                    delete registrations[dateFormatted];
-                    saveData();
-                    if (supabaseClient) {
-                        supabaseClient.from('registrations').delete().eq('date_str', dateFormatted);
-                    }
-                    renderDaysList();
-                    showToast(`Đã hủy lượt đăng ký ngày ${dateFormatted}`, 'info');
-                }
-            }
         });
 
         closeRegisterModal.addEventListener('click', () => closeModal(registerModal));
         btnCancelRegister.addEventListener('click', () => closeModal(registerModal));
 
-        // Submit Employee Registration (1 Person Per Day Rule)
+        // Submit Employee Registration
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const dateStr = modalDateInput.value;
@@ -488,12 +453,11 @@
                 return;
             }
 
-            // Lock Check
             if (registrations[dateStr]) {
                 const existing = registrations[dateStr];
-                showToast(`Đã có người đăng ký trước! Ngày ${dateStr} đã thuộc về ${existing.empCode} - ${existing.empName}.`, 'error');
+                showToast(`Đã có người khác chọn trước! Ngày này đã thuộc về ${existing.empCode} - ${existing.empName}.`, 'error');
                 closeModal(registerModal);
-                renderDaysList();
+                renderDaysGrid();
                 return;
             }
 
@@ -520,11 +484,12 @@
             }
 
             closeModal(registerModal);
-            renderDaysList();
+            renderDaysGrid();
+            renderAdminRegsTable();
             showToast(`Đăng ký thành công cho ${empCode} - ${empName}!`, 'success');
         });
 
-        // Admin Controls
+        // Admin Modal Controls
         closeAdminModal.addEventListener('click', () => closeModal(adminModal));
 
         tabBtns.forEach(btn => {
@@ -561,7 +526,7 @@
             showToast(`Đã thêm nhân viên ${code} - ${name}`, 'success');
         });
 
-        // Delete Employee
+        // Delete Employee from Admin
         empTableBody.addEventListener('click', (e) => {
             const delBtn = e.target.closest('.btn-del-emp');
             if (delBtn) {
@@ -573,6 +538,24 @@
                     renderAdminEmployeeTable();
                     updateDashboardStats();
                     showToast(`Đã xóa nhân viên ${code}`, 'info');
+                }
+            }
+        });
+
+        // Admin Cancel Registration for any date
+        adminRegsTableBody.addEventListener('click', (e) => {
+            const cancelBtn = e.target.closest('.btn-admin-cancel-reg');
+            if (cancelBtn) {
+                const dateFormatted = cancelBtn.dataset.date;
+                if (confirm(`Trưởng nhóm xác nhận HỦY lượt đăng ký ngày ${dateFormatted}?`)) {
+                    delete registrations[dateFormatted];
+                    saveData();
+                    if (supabaseClient) {
+                        supabaseClient.from('registrations').delete().eq('date_str', dateFormatted);
+                    }
+                    renderDaysGrid();
+                    renderAdminRegsTable();
+                    showToast(`Trưởng nhóm đã hủy đăng ký ngày ${dateFormatted}`, 'info');
                 }
             }
         });
@@ -606,12 +589,13 @@
                 if (supabaseClient) {
                     supabaseClient.from('registrations').delete().neq('date_str', '');
                 }
-                renderDaysList();
+                renderDaysGrid();
+                renderAdminRegsTable();
                 showToast('Đã xóa toàn bộ dữ liệu đăng ký Tháng 7/2026!', 'info');
             }
         });
 
-        // Save Supabase
+        // Supabase Save
         btnSaveSupabase.addEventListener('click', () => {
             supabaseConfig.url = supabaseUrl.value.trim();
             supabaseConfig.key = supabaseKey.value.trim();
@@ -666,6 +650,36 @@
                 </td>
             `;
             empTableBody.appendChild(tr);
+        });
+    }
+
+    function renderAdminRegsTable() {
+        adminRegsTableBody.innerHTML = '';
+        const regDates = Object.keys(registrations).sort();
+
+        if (regDates.length === 0) {
+            adminRegsTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Chưa có lượt đăng ký nào trong Tháng 7/2026.</td></tr>';
+            return;
+        }
+
+        regDates.forEach(dateFormatted => {
+            const reg = registrations[dateFormatted];
+            const d = new Date(dateFormatted);
+            const dayName = DAY_NAMES[d.getDay()];
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${dateFormatted.split('-').reverse().join('/')}</strong></td>
+                <td>${dayName}</td>
+                <td><span style="color:#047857; font-weight:700;">${escapeHtml(reg.empCode)} - ${escapeHtml(reg.empName)}</span></td>
+                <td>${escapeHtml(reg.note || '-')}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm btn-admin-cancel-reg" data-date="${dateFormatted}">
+                        <i class="fa-solid fa-xmark"></i> Hủy Đăng Ký
+                    </button>
+                </td>
+            `;
+            adminRegsTableBody.appendChild(tr);
         });
     }
 

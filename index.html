@@ -7,25 +7,20 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Supabase JS Client CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="futuristic-theme">
-
-    <!-- Background Ambient Neon Glow Objects -->
-    <div class="ambient-glow glow-1"></div>
-    <div class="ambient-glow glow-2"></div>
-    <div class="ambient-glow glow-3"></div>
+<body class="light-theme">
 
     <!-- Header Section -->
     <header class="app-header glass-header">
         <div class="container header-container">
             <div class="brand">
-                <div class="logo-icon glow-icon">
+                <div class="logo-icon">
                     <i class="fa-solid fa-calendar-check"></i>
                 </div>
                 <div class="brand-text">
@@ -43,7 +38,6 @@
                 <!-- Admin Lock Key Icon Button -->
                 <button class="key-btn" id="btnAdminKey" title="Cấu Hình Trưởng Nhóm (Cần Mật Khẩu)">
                     <i class="fa-solid fa-key"></i>
-                    <span class="key-glow"></span>
                 </button>
             </div>
         </div>
@@ -66,19 +60,19 @@
             </div>
         </div>
 
-        <!-- Days Grid Header -->
+        <!-- Days Grid Header & Legend -->
         <div class="days-grid-header">
-            <span class="section-title"><i class="fa-solid fa-calendar-days"></i> Danh Sách Lịch Tháng 07/2026</span>
+            <span class="section-title"><i class="fa-solid fa-calendar-days"></i> Lịch Đăng Ký Tháng 07/2026</span>
             <span class="legend">
-                <span class="legend-item"><span class="dot dot-available"></span> Còn trống</span>
-                <span class="legend-item"><span class="dot dot-registered"></span> Đã đăng ký</span>
-                <span class="legend-item"><span class="dot dot-sunday"></span> Chủ nhật (Khóa)</span>
+                <span class="legend-item"><span class="dot dot-available"></span> Chưa đăng ký (Xanh dương)</span>
+                <span class="legend-item"><span class="dot dot-registered"></span> Đã đăng ký (Xanh lá)</span>
+                <span class="legend-item"><span class="dot dot-sunday"></span> Chủ nhật (Đỏ - Khóa)</span>
             </span>
         </div>
 
-        <!-- Days List Grid (Calendar Days 1-31) -->
-        <div class="days-list" id="daysList">
-            <!-- Dynamic rendered by app.js -->
+        <!-- Days Compact Grid View (Calendar Cards) -->
+        <div class="days-grid-compact" id="daysList">
+            <!-- Dynamic Compact Cards rendered by app.js -->
         </div>
 
         <!-- COUNTDOWN TIMER OVERLAY & FROSTED GLASS SHIELD -->
@@ -89,7 +83,7 @@
                     <i class="fa-solid fa-lock"></i>
                 </div>
                 <h2>CỔNG ĐĂNG KÝ CHƯA MỞ</h2>
-                <p class="cd-desc" id="cdDescText">Hệ thống đăng ký nghỉ phép Tháng 07/2026 đang trong thời gian đếm ngược.</p>
+                <p class="cd-desc" id="cdDescText">Hệ thống đang trong thời gian đếm ngược.</p>
 
                 <!-- Countdown Clock Digits -->
                 <div class="clock-container">
@@ -138,12 +132,12 @@
                             <input type="password" id="adminPassInput" class="form-control" placeholder="Nhập mật khẩu..." required autocomplete="current-password">
                         </div>
                         <div class="pass-error-msg" id="passErrorMsg" style="display: none;">
-                            <i class="fa-solid fa-circle-exclamation"></i> Mật khẩu không chính xác! Vui lòng thử lại.
+                            <i class="fa-solid fa-circle-exclamation"></i> Mật khẩu không chính xác!
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" id="btnCancelPass">Hủy</button>
-                        <button type="submit" class="btn btn-primary btn-glow">
+                        <button type="submit" class="btn btn-primary">
                             <i class="fa-solid fa-unlock"></i> Mở Cấu Hình
                         </button>
                     </div>
@@ -173,7 +167,7 @@
                     
                     <div class="form-group">
                         <label for="selectEmployee">Chọn Nhân Viên (Mã NV - Tên NV): <span class="required">*</span></label>
-                        <select id="selectEmployee" required class="form-control glass-select">
+                        <select id="selectEmployee" required class="form-control">
                             <option value="">-- Chọn Mã Nhân Viên - Tên Nhân Viên --</option>
                         </select>
                     </div>
@@ -185,7 +179,7 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" id="btnCancelRegister">Hủy bỏ</button>
-                        <button type="submit" class="btn btn-primary btn-glow" id="btnSubmitRegister">
+                        <button type="submit" class="btn btn-primary" id="btnSubmitRegister">
                             <i class="fa-solid fa-check"></i> Xác Nhận Đăng Ký
                         </button>
                     </div>
@@ -205,13 +199,14 @@
                 <!-- Admin Tabs -->
                 <div class="admin-tabs">
                     <button class="tab-btn active" data-tab="tabEmployees"><i class="fa-solid fa-id-card"></i> Danh Sách Nhân Viên</button>
+                    <button class="tab-btn" data-tab="tabManageRegs"><i class="fa-solid fa-list-check"></i> Quản Lý & Hủy Đăng Ký</button>
                     <button class="tab-btn" data-tab="tabTimeWindow"><i class="fa-solid fa-clock-rotate-left"></i> Thời Gian Đăng Ký</button>
                     <button class="tab-btn" data-tab="tabSupabase"><i class="fa-solid fa-database"></i> Tích Hợp Supabase</button>
                 </div>
 
                 <!-- Tab 1: Manage Employees -->
                 <div class="tab-content active" id="tabEmployees">
-                    <div class="add-emp-card glass-inner-card">
+                    <div class="add-emp-card">
                         <h4>Thêm Nhân Viên Mới Vào Cấu Hình</h4>
                         <div class="form-row">
                             <div class="form-group flex-1">
@@ -223,7 +218,7 @@
                                 <input type="text" id="newEmpName" class="form-control" placeholder="VD: Nguyễn Văn A">
                             </div>
                             <div class="form-group btn-align-bottom">
-                                <button type="button" class="btn btn-primary btn-glow" id="btnAddEmployee">
+                                <button type="button" class="btn btn-primary" id="btnAddEmployee">
                                     <i class="fa-solid fa-plus"></i> Thêm NV
                                 </button>
                             </div>
@@ -231,7 +226,7 @@
                     </div>
 
                     <div class="section-title-row">
-                        <h4>Danh Sách Nhân Viên Được Chọn (<span id="empTableCount">0</span>)</h4>
+                        <h4>Danh Sách Nhân Viên Cấu Hình (<span id="empTableCount">0</span>)</h4>
                         <button type="button" class="btn btn-outline btn-sm" id="btnExportExcel">
                             <i class="fa-solid fa-file-excel"></i> Xuất Excel / CSV
                         </button>
@@ -254,9 +249,33 @@
                     </div>
                 </div>
 
-                <!-- Tab 2: Time Window Config -->
+                <!-- Tab 2: Admin Manage Registrations (Hủy Đăng Ký Dành Riêng Cho Trưởng Nhóm) -->
+                <div class="tab-content" id="tabManageRegs">
+                    <div class="config-card">
+                        <h4><i class="fa-solid fa-user-gear"></i> Danh Sách Lịch Đã Đăng Ký Tháng 7/2026</h4>
+                        <p class="config-desc">Chỉ Trưởng nhóm mới có quyền hủy hoặc điều chỉnh lượt đăng ký nghỉ phép của nhân viên.</p>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày</th>
+                                        <th>Thứ</th>
+                                        <th>Nhân Viên Đăng Ký</th>
+                                        <th>Ghi Chú</th>
+                                        <th>Thao Tác Trưởng Nhóm</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminRegsTableBody">
+                                    <!-- Dynamic registered rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Time Window Config -->
                 <div class="tab-content" id="tabTimeWindow">
-                    <div class="config-card glass-inner-card">
+                    <div class="config-card">
                         <h4><i class="fa-solid fa-business-time"></i> Cấu Hình Khung Thời Gian Đặt Lịch</h4>
                         <p class="config-desc">Khi chưa đến thời gian Bắt đầu, giao diện bên ngoài sẽ hiển thị **Đồng Hồ Đếm Ngược** và **Che Mờ Lớp Lịch** bên dưới.</p>
 
@@ -277,13 +296,13 @@
                         </div>
 
                         <div class="action-buttons margin-top">
-                            <button type="button" class="btn btn-primary btn-glow" id="btnSaveTimeConfig">
+                            <button type="button" class="btn btn-primary" id="btnSaveTimeConfig">
                                 <i class="fa-solid fa-floppy-disk"></i> Lưu Thời Gian Đăng Ký
                             </button>
                         </div>
                     </div>
 
-                    <div class="config-card margin-top danger-zone glass-inner-card">
+                    <div class="config-card margin-top danger-zone">
                         <h4 class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Đặt Lại Dữ Liệu Đăng Ký</h4>
                         <p>Trưởng nhóm có thể xóa tất cả lượt đăng ký nghỉ phép của Tháng 7/2026.</p>
                         <button type="button" class="btn btn-danger" id="btnClearAllRegs">
@@ -292,9 +311,9 @@
                     </div>
                 </div>
 
-                <!-- Tab 3: Supabase Config -->
+                <!-- Tab 4: Supabase Config -->
                 <div class="tab-content" id="tabSupabase">
-                    <div class="config-card glass-inner-card">
+                    <div class="config-card">
                         <h4><i class="fa-solid fa-cloud"></i> Cấu Hình Supabase Database (Realtime Sync)</h4>
                         <p>Nhập thông tin dự án Supabase để dữ liệu đăng ký tự động nhảy tức thì giữa tất cả các thiết bị nhân viên.</p>
 
@@ -308,7 +327,7 @@
                         </div>
 
                         <div class="action-buttons">
-                            <button type="button" class="btn btn-primary btn-glow" id="btnSaveSupabase">
+                            <button type="button" class="btn btn-primary" id="btnSaveSupabase">
                                 <i class="fa-solid fa-link"></i> Lưu Kết Nối Cloud
                             </button>
                             <button type="button" class="btn btn-outline" id="btnDisconnectSupabase">
