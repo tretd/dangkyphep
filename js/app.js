@@ -214,8 +214,10 @@
             supabaseConfig = { ...DEFAULT_SUPABASE };
         }
 
-        // Guarantee active URL & Key are never empty
-        if (!supabaseConfig.url) supabaseConfig.url = DEFAULT_SUPABASE.url;
+        // Guarantee active URL & Key are never empty or mistyped from old localStorage
+        if (!supabaseConfig.url || supabaseConfig.url.includes('duyttscaoezluyhvwnud')) {
+            supabaseConfig.url = DEFAULT_SUPABASE.url;
+        }
         if (!supabaseConfig.key) supabaseConfig.key = DEFAULT_SUPABASE.key;
 
         supabaseUrl.value = supabaseConfig.url;
