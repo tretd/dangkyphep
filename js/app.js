@@ -858,7 +858,6 @@
 
     function showToast(message, type = 'info') {
         const toastContainer = document.getElementById('toastContainer');
-        const toast.createElement ? null : null;
         const toastEl = document.createElement('div');
         toastEl.className = `toast toast-${type}`;
 
