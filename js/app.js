@@ -259,8 +259,25 @@
         configMonthSelect.value = String(appConfig.targetMonth ?? 7);
         configYearSelect.value = String(appConfig.targetYear ?? 2026);
 
-        startTimeInput.value = appConfig.startTime || '';
-        endTimeInput.value = appConfig.endTime || '';
+        startTimeInput.value = formatForDateTimeInput(appConfig.startTime);
+        endTimeInput.value = formatForDateTimeInput(appConfig.endTime);
+    }
+
+    function formatForDateTimeInput(dateStr) {
+        if (!dateStr) return '';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            const pad = (n) => String(n).padStart(2, '0');
+            const year = d.getFullYear();
+            const month = pad(d.getMonth() + 1);
+            const day = pad(d.getDate());
+            const hours = pad(d.getHours());
+            const minutes = pad(d.getMinutes());
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        } catch (e) {
+            return '';
+        }
     }
 
     function saveData(broadcast = true) {
@@ -397,8 +414,8 @@
                         appConfig = { ...appConfig, ...parsedCfg };
                         configMonthSelect.value = String(appConfig.targetMonth ?? 7);
                         configYearSelect.value = String(appConfig.targetYear ?? 2026);
-                        startTimeInput.value = appConfig.startTime || '';
-                        endTimeInput.value = appConfig.endTime || '';
+                        startTimeInput.value = formatForDateTimeInput(appConfig.startTime);
+                        endTimeInput.value = formatForDateTimeInput(appConfig.endTime);
                     }
                 } else {
                     pushConfigToSupabase();
@@ -697,6 +714,8 @@
         btnAdminKey.addEventListener('click', () => {
             adminPassInput.value = '';
             passErrorMsg.style.display = 'none';
+            startTimeInput.value = formatForDateTimeInput(appConfig.startTime);
+            endTimeInput.value = formatForDateTimeInput(appConfig.endTime);
             openModal(passwordModal);
             setTimeout(() => adminPassInput.focus(), 150);
         });
@@ -892,11 +911,19 @@
         });
 
         btnSaveTimeConfig.addEventListener('click', async () => {
+            const startVal = startTimeInput.value;
+            const endVal = endTimeInput.value;
+
+            if (!startVal || !endVal) {
+                showToast('Vui lòng chọn đầy đủ Thời Gian Bắt Đầu và Kết Thúc để cài đếm ngược!', 'warning');
+                return;
+            }
+
             const newConfig = {
                 targetMonth: parseInt(configMonthSelect.value, 10),
                 targetYear: parseInt(configYearSelect.value, 10),
-                startTime: startTimeInput.value,
-                endTime: endTimeInput.value,
+                startTime: startVal,
+                endTime: endVal,
                 isOpenAlways: false
             };
 
@@ -919,7 +946,7 @@
             updateMonthUIHeaders();
             renderDaysGrid();
             checkTimeAndTicker();
-            showToast(`Đã lưu cấu hình mở lịch Tháng ${appConfig.targetMonth + 1}/${appConfig.targetYear}!`, 'success');
+            showToast(`🔒 Đã lưu cấu hình KHÓA ĐẾM NGƯỢC Tháng ${appConfig.targetMonth + 1}/${appConfig.targetYear}!`, 'success');
         });
 
         btnSetOpenNow.addEventListener('click', async () => {
@@ -950,6 +977,46 @@
             checkTimeAndTicker();
             showToast(`Đã mở đăng ký tự do Tháng ${appConfig.targetMonth + 1}/${appConfig.targetYear}!`, 'info');
         });
+
+        const btnSetLockNow = document.getElementById('btnSetLockNow');
+        if (btnSetLockNow) {
+            btnSetLockNow.addEventListener('click', async () => {
+                const now = new Date();
+                const futureStart = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                const futureEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+                const startStr = formatForDateTimeInput(futureStart);
+                const endStr = formatForDateTimeInput(futureEnd);
+
+                startTimeInput.value = startStr;
+                endTimeInput.value = endStr;
+
+                const oldConfig = { ...appConfig };
+                appConfig.targetMonth = parseInt(configMonthSelect.value, 10);
+                appConfig.targetYear = parseInt(configYearSelect.value, 10);
+                appConfig.isOpenAlways = false;
+                appConfig.startTime = startStr;
+                appConfig.endTime = endStr;
+
+                if (supabaseClient) {
+                    updateCloudBadge('syncing', 'Đang lưu...');
+                    const ok = await pushConfigToSupabase();
+                    if (!ok) {
+                        appConfig = oldConfig;
+                        saveData();
+                        updateCloudBadge('offline', 'Lỗi Cloud');
+                        return;
+                    }
+                    updateCloudBadge('online', 'Cloud Realtime');
+                }
+
+                saveData();
+                updateMonthUIHeaders();
+                renderDaysGrid();
+                checkTimeAndTicker();
+                showToast(`🔒 ĐÃ KHÓA LỊCH ĐĂNG KÝ NGAY BÂY GIỜ!`, 'success');
+            });
+        }
 
         btnClearAllRegs.addEventListener('click', async () => {
             const mStr = String((appConfig.targetMonth ?? 7) + 1).padStart(2, '0');
