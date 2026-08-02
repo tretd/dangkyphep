@@ -14,13 +14,13 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="light-theme">
+<body class="apple-theme">
 
-    <!-- Header Section -->
-    <header class="app-header glass-header">
+    <!-- Header Section (Apple Frosted Glass) -->
+    <header class="app-header apple-header">
         <div class="container header-container">
             <div class="brand">
-                <div class="logo-icon">
+                <div class="logo-icon apple-logo">
                     <i class="fa-solid fa-calendar-check"></i>
                 </div>
                 <div class="brand-text">
@@ -35,8 +35,8 @@
                     <span class="status-text" id="statusText">Đang kiểm tra...</span>
                 </div>
                 
-                <!-- Admin Lock Key Icon Button -->
-                <button class="key-btn" id="btnAdminKey" title="Cấu Hình Trưởng Nhóm (Cần Mật Khẩu)">
+                <!-- Admin Lock Key Button (Apple Style) -->
+                <button class="key-btn apple-key-btn" id="btnAdminKey" title="Cấu Hình Trưởng Nhóm (Cần Mật Khẩu)">
                     <i class="fa-solid fa-key"></i>
                 </button>
             </div>
@@ -46,8 +46,8 @@
     <!-- Main Content Container -->
     <main class="container main-content position-relative">
         
-        <!-- Search & Filter Bar -->
-        <div class="filter-bar glass-panel">
+        <!-- Search & Filter Bar (Apple Pill Panel) -->
+        <div class="filter-bar apple-panel">
             <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" id="searchInput" placeholder="Tìm theo Ngày, Thứ, Mã NV hoặc Tên NV...">
@@ -70,20 +70,20 @@
             </span>
         </div>
 
-        <!-- Days Compact Grid View (Calendar Cards) -->
+        <!-- Days Compact Grid View (Apple Cards) -->
         <div class="days-grid-compact" id="daysList">
-            <!-- Dynamic Compact Cards rendered by app.js -->
+            <!-- Dynamic Apple Cards rendered by app.js -->
         </div>
 
-        <!-- COUNTDOWN TIMER OVERLAY & FROSTED GLASS SHIELD -->
+        <!-- COUNTDOWN TIMER OVERLAY & APPLE FROSTED GLASS SHIELD -->
         <div class="countdown-overlay" id="countdownOverlay" style="display: none;">
             <div class="frosted-glass-curtain"></div>
-            <div class="countdown-card glass-card">
+            <div class="countdown-card apple-card">
                 <div class="lock-icon-badge">
                     <i class="fa-solid fa-lock"></i>
                 </div>
                 <h2>CỔNG ĐĂNG KÝ CHƯA MỞ</h2>
-                <p class="cd-desc" id="cdDescText">Hệ thống đang trong thời gian đếm ngược.</p>
+                <p class="cd-desc" id="cdDescText">Hệ thống đang trong thời gian đếm ngược mở cổng đăng ký.</p>
 
                 <!-- Countdown Clock Digits -->
                 <div class="clock-container">
@@ -118,7 +118,7 @@
 
     <!-- Modal: Password Auth for Admin -->
     <div class="modal-overlay" id="passwordModal">
-        <div class="modal-content modal-small glass-card">
+        <div class="modal-content modal-small apple-card">
             <div class="modal-header">
                 <h3><i class="fa-solid fa-shield-cat"></i> Xác Thực Trưởng Nhóm</h3>
                 <button class="close-btn" id="closePasswordModal">&times;</button>
@@ -148,7 +148,7 @@
 
     <!-- Modal: Register Leave (Employee) -->
     <div class="modal-overlay" id="registerModal">
-        <div class="modal-content glass-card">
+        <div class="modal-content apple-card">
             <div class="modal-header">
                 <h3><i class="fa-solid fa-pen-to-square"></i> Đăng Ký Nghỉ Phép</h3>
                 <button class="close-btn" id="closeRegisterModal">&times;</button>
@@ -190,7 +190,7 @@
 
     <!-- Modal: Admin Settings (Trưởng Nhóm Cấu Hình) -->
     <div class="modal-overlay" id="adminModal">
-        <div class="modal-content modal-large glass-card">
+        <div class="modal-content modal-large apple-card">
             <div class="modal-header">
                 <h3><i class="fa-solid fa-user-shield"></i> Cấu Hình Trưởng Nhóm (Admin)</h3>
                 <button class="close-btn" id="closeAdminModal">&times;</button>
@@ -249,7 +249,7 @@
                     </div>
                 </div>
 
-                <!-- Tab 2: Admin Manage Registrations (Hủy Đăng Ký Dành Riêng Cho Trưởng Nhóm) -->
+                <!-- Tab 2: Admin Manage Registrations -->
                 <div class="tab-content" id="tabManageRegs">
                     <div class="config-card">
                         <h4><i class="fa-solid fa-user-gear"></i> Danh Sách Lịch Đã Đăng Ký Tháng 7/2026</h4>

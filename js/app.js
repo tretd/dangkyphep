@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép - Tháng 07/2026
-   JavaScript Application Core (Light Theme + Compact Grid Cards + Admin Only Cancel)
+   JavaScript Application Core (Apple Minimalist Theme + Passcode Cuong@032)
    ========================================================================== */
 
 (function () {
@@ -12,12 +12,12 @@
     const DAYS_IN_JULY = 31;
     const ADMIN_PASSCODE = 'Cuong@032';
 
-    const STORAGE_EMPLOYEES = 'leave_app_employees_v3';
-    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v3';
-    const STORAGE_CONFIG = 'leave_app_config_v3';
-    const STORAGE_SUPABASE = 'leave_app_supabase_v3';
+    const STORAGE_EMPLOYEES = 'leave_app_employees_v4';
+    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v4';
+    const STORAGE_CONFIG = 'leave_app_config_v4';
+    const STORAGE_SUPABASE = 'leave_app_supabase_v4';
 
-    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v3') : null;
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('leave_app_sync_v4') : null;
 
     const DEFAULT_EMPLOYEES = [
         { code: 'NV001', name: 'Nguyễn Văn An' },
@@ -129,7 +129,7 @@
                     renderDaysGrid();
                     renderAdminRegsTable();
                     updateDashboardStats();
-                    showToast('Dữ liệu vừa được cập nhật từ thiết bị khác!', 'info');
+                    showToast('Dữ liệu vừa được cập nhật!', 'info');
                 }
             };
         }
@@ -167,19 +167,19 @@
     }
 
     // ----------------------------------------------------------------------
-    // 4. Supabase Realtime Integration
+    // 4. Supabase Integration
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
         if (window.supabase && supabaseConfig.url && supabaseConfig.key) {
             try {
                 supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.key);
                 supabaseStatusAlert.innerHTML = `
-                    <div class="alert alert-warning" style="background:#ecfdf5; border-color:#a7f3d0; color:#047857;">
+                    <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d;">
                         <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud thành công!
                     </div>`;
                 fetchSupabaseData();
             } catch (err) {
-                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#dc2626;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
+                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48;"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi kết nối Supabase: ${err.message}</div>`;
             }
         } else {
             supabaseStatusAlert.innerHTML = `
@@ -284,7 +284,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 6. Render Compact Card Grid Layout
+    // 6. Render Apple Minimalist Compact Grid Layout
     // ----------------------------------------------------------------------
     function renderDaysGrid() {
         daysListEl.innerHTML = '';
@@ -313,7 +313,7 @@
 
             const card = document.createElement('div');
 
-            // 1. RED CARD: SUNDAY
+            // 1. RED CARD: SUNDAY (SOFT CORAL RED)
             if (isSunday) {
                 card.className = 'compact-card card-red';
                 card.innerHTML = `
@@ -322,14 +322,14 @@
                         <span class="card-day-name">${dayName}</span>
                     </div>
                     <div class="card-body-text">
-                        <i class="fa-solid fa-ban"></i> Chủ Nhật - Không chọn
+                        <i class="fa-solid fa-ban" style="margin-right:6px;"></i> Chủ Nhật - Khóa
                     </div>
                     <div class="sunday-tag">
-                        <i class="fa-solid fa-lock"></i> Khóa lịch
+                        <i class="fa-solid fa-lock"></i> Không cho chọn
                     </div>
                 `;
             }
-            // 2. GREEN CARD: REGISTERED (NO CANCEL BUTTON FOR PUBLIC STAFF!)
+            // 2. GREEN CARD: REGISTERED (SOFT SAGE GREEN - SHOWING EMP CODE - EMP NAME)
             else if (existingReg) {
                 card.className = 'compact-card card-green';
                 card.innerHTML = `
@@ -338,15 +338,15 @@
                         <span class="card-day-name">${dayName}</span>
                     </div>
                     <div class="card-body-text">
-                        <i class="fa-solid fa-user-check" style="margin-right:6px; color:#059669;"></i>
+                        <i class="fa-solid fa-user-check" style="margin-right:6px; color:#16a34a;"></i>
                         ${escapeHtml(existingReg.empCode)} - ${escapeHtml(existingReg.empName)}
                     </div>
                     <div class="registered-tag">
-                        <i class="fa-solid fa-check"></i> Đã đăng ký
+                        <i class="fa-solid fa-check"></i> Đã chọn
                     </div>
                 `;
             }
-            // 3. BLUE CARD: AVAILABLE / UNREGISTERED
+            // 3. BLUE CARD: AVAILABLE (SOFT CERAMIC BLUE)
             else {
                 card.className = 'compact-card card-blue';
                 card.innerHTML = `
@@ -355,7 +355,7 @@
                         <span class="card-day-name">${dayName}</span>
                     </div>
                     <div class="card-body-text">
-                        <i class="fa-regular fa-circle" style="margin-right:6px;"></i> Ngày này chưa chọn
+                        <i class="fa-regular fa-circle" style="margin-right:6px;"></i> Chưa có ai đăng ký
                     </div>
                     <button class="btn btn-primary btn-open-reg" data-date="${dateFormatted}" data-title="${dayName}, Ngày ${String(dayNum).padStart(2, '0')}/07/2026">
                         <i class="fa-solid fa-plus"></i> Đăng Ký
@@ -372,7 +372,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 7. Event Handlers & Admin Password Auth (Cuong@032)
+    // 7. Event Handlers & Admin Passcode Check (Cuong@032)
     // ----------------------------------------------------------------------
     function setupEventListeners() {
         searchInput.addEventListener('input', (e) => {
@@ -389,7 +389,7 @@
             });
         });
 
-        // Key Icon Button Click -> Password Auth Modal
+        // Key Icon Button -> Admin Passcode Modal
         btnAdminKey.addEventListener('click', () => {
             adminPassInput.value = '';
             passErrorMsg.style.display = 'none';
@@ -400,7 +400,7 @@
         closePasswordModal.addEventListener('click', () => closeModal(passwordModal));
         btnCancelPass.addEventListener('click', () => closeModal(passwordModal));
 
-        // Submit Admin Password Form (Cuong@032)
+        // Verify Passcode Submit
         passwordForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const inputPass = adminPassInput.value.trim();
@@ -455,7 +455,7 @@
 
             if (registrations[dateStr]) {
                 const existing = registrations[dateStr];
-                showToast(`Đã có người khác chọn trước! Ngày này đã thuộc về ${existing.empCode} - ${existing.empName}.`, 'error');
+                showToast(`Đã có người khác chọn trước! Ngày này thuộc về ${existing.empCode} - ${existing.empName}.`, 'error');
                 closeModal(registerModal);
                 renderDaysGrid();
                 return;
@@ -489,7 +489,6 @@
             showToast(`Đăng ký thành công cho ${empCode} - ${empName}!`, 'success');
         });
 
-        // Admin Modal Controls
         closeAdminModal.addEventListener('click', () => closeModal(adminModal));
 
         tabBtns.forEach(btn => {
@@ -526,7 +525,7 @@
             showToast(`Đã thêm nhân viên ${code} - ${name}`, 'success');
         });
 
-        // Delete Employee from Admin
+        // Delete Employee
         empTableBody.addEventListener('click', (e) => {
             const delBtn = e.target.closest('.btn-del-emp');
             if (delBtn) {
@@ -671,7 +670,7 @@
             tr.innerHTML = `
                 <td><strong>${dateFormatted.split('-').reverse().join('/')}</strong></td>
                 <td>${dayName}</td>
-                <td><span style="color:#047857; font-weight:700;">${escapeHtml(reg.empCode)} - ${escapeHtml(reg.empName)}</span></td>
+                <td><span style="color:#15803d; font-weight:700;">${escapeHtml(reg.empCode)} - ${escapeHtml(reg.empName)}</span></td>
                 <td>${escapeHtml(reg.note || '-')}</td>
                 <td>
                     <button class="btn btn-danger btn-sm btn-admin-cancel-reg" data-date="${dateFormatted}">
