@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   JavaScript Application Core (Default August 2026 & Hardcoded Supabase Credentials)
+   JavaScript Application Core (Realtime Full Cloud Sync & Loop Fix)
    ========================================================================== */
 
 (function () {
@@ -74,6 +74,7 @@
     let activeFilter = 'all';
     let searchQuery = '';
     let timerInterval = null;
+    let isInternalUpdate = false;
 
     const DAY_NAMES = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
@@ -170,14 +171,14 @@
 
         if (syncChannel) {
             syncChannel.onmessage = (event) => {
-                if (event.data && event.data.type === 'DATA_UPDATED') {
+                if (event.data && event.data.type === 'DATA_UPDATED' && !isInternalUpdate) {
                     loadData();
                     updateMonthUIHeaders();
                     renderDaysGrid();
                     renderEmployeeCardsGrid();
                     renderAdminRegsTable();
                     updateDashboardStats();
-                    showToast('Dữ liệu vừa được cập nhật!', 'info');
+                    checkTimeAndTicker();
                 }
             };
         }
@@ -225,18 +226,18 @@
 
         startTimeInput.value = appConfig.startTime || '';
         endTimeInput.value = appConfig.endTime || '';
-
-        saveData();
     }
 
-    function saveData() {
+    function saveData(broadcast = true) {
         localStorage.setItem(STORAGE_EMPLOYEES, JSON.stringify(employees));
         localStorage.setItem(STORAGE_REGISTRATIONS, JSON.stringify(registrations));
         localStorage.setItem(STORAGE_CONFIG, JSON.stringify(appConfig));
         localStorage.setItem(STORAGE_SUPABASE, JSON.stringify(supabaseConfig));
 
-        if (syncChannel) {
+        if (broadcast && syncChannel) {
+            isInternalUpdate = true;
             syncChannel.postMessage({ type: 'DATA_UPDATED' });
+            setTimeout(() => { isInternalUpdate = false; }, 300);
         }
     }
 
@@ -250,7 +251,7 @@
     }
 
     // ----------------------------------------------------------------------
-    // 4. Supabase Cloud Sync (Auto-Sync for All External Devices)
+    // 4. Supabase Cloud Sync (Full Sync: Registrations, Config, Employees)
     // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
         const cleanUrl = sanitizeSupabaseUrl(supabaseConfig.url || DEFAULT_SUPABASE.url);
@@ -278,19 +279,11 @@
     async function fetchSupabaseData() {
         if (!supabaseClient) return;
         try {
-            const { data, error } = await supabaseClient.from('registrations').select('*');
-            if (error) {
-                supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#e11d48; background:#fff1f2; border:1px solid #fecdd3; padding:10px; border-radius:8px;"><i class="fa-solid fa-triangle-exclamation"></i> Supabase URL không tồn tại hoặc chưa bật project (${escapeHtml(error.message || 'ERR_NAME_NOT_RESOLVED')}). Lịch đăng ký vẫn chạy mượt mà ở chế độ Local!</div>`;
-                return;
-            }
-            if (data) {
-                supabaseStatusAlert.innerHTML = `
-                    <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d; padding:10px; border-radius:8px;">
-                        <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công! Dữ liệu đang được đồng bộ trực tuyến giữa tất cả các thiết bị.
-                    </div>`;
-
+            // 1. Fetch Registrations
+            const { data: regData, error: regError } = await supabaseClient.from('registrations').select('*');
+            if (!regError && regData) {
                 const cloudRegs = {};
-                data.forEach(item => {
+                regData.forEach(item => {
                     cloudRegs[item.date_str] = {
                         empCode: item.emp_code,
                         empName: item.emp_name,
@@ -299,13 +292,78 @@
                     };
                 });
                 registrations = cloudRegs;
-                saveData();
-                renderDaysGrid();
-                renderAdminRegsTable();
             }
+
+            // 2. Fetch App Config (Month & Countdown Lock) if app_config table exists
+            try {
+                const { data: cfgData } = await supabaseClient.from('app_config').select('*').limit(1);
+                if (cfgData && cfgData.length > 0) {
+                    const cloudCfg = cfgData[0];
+                    if (cloudCfg.config_json) {
+                        const parsedCfg = typeof cloudCfg.config_json === 'string' ? JSON.parse(cloudCfg.config_json) : cloudCfg.config_json;
+                        appConfig = { ...appConfig, ...parsedCfg };
+                        configMonthSelect.value = String(appConfig.targetMonth ?? 7);
+                        configYearSelect.value = String(appConfig.targetYear ?? 2026);
+                        startTimeInput.value = appConfig.startTime || '';
+                        endTimeInput.value = appConfig.endTime || '';
+                    }
+                }
+            } catch (e) {
+                // Table app_config optional fallback
+            }
+
+            // 3. Fetch Employees List if employees table exists
+            try {
+                const { data: empData } = await supabaseClient.from('employees').select('*');
+                if (empData && empData.length > 0) {
+                    employees = empData.map(e => ({ code: e.code, name: e.name }));
+                }
+            } catch (e) {
+                // Table employees optional fallback
+            }
+
+            supabaseStatusAlert.innerHTML = `
+                <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d; padding:10px; border-radius:8px;">
+                    <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công! Dữ liệu đang được đồng bộ trực tuyến giữa tất cả các thiết bị.
+                </div>`;
+
+            saveData(false);
+            updateMonthUIHeaders();
+            renderDaysGrid();
+            renderEmployeeCardsGrid();
+            renderAdminEmployeeTable();
+            renderAdminRegsTable();
+            updateDashboardStats();
+            checkTimeAndTicker();
+
         } catch (e) {
             console.warn('Supabase network connection failed (running offline/local mode):', e);
-            supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#64748b; background:#f8fafc; border:1px solid #cbd5e1; padding:10px; border-radius:8px;"><i class="fa-solid fa-circle-info"></i> Tên miền Supabase URL không phân giải được (ERR_NAME_NOT_RESOLVED). Hệ thống tự động vận hành chế độ lưu trữ mượt mà!</div>`;
+            supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#64748b; background:#f8fafc; border:1px solid #cbd5e1; padding:10px; border-radius:8px;"><i class="fa-solid fa-circle-info"></i> Tự động làm việc ở chế độ lưu trữ mượt mà!</div>`;
+        }
+    }
+
+    async function pushConfigToSupabase() {
+        if (!supabaseClient) return;
+        try {
+            await supabaseClient.from('app_config').upsert([
+                { id: 1, config_json: appConfig, updated_at: new Date().toISOString() }
+            ]);
+        } catch (e) {
+            console.warn('Push config error:', e);
+        }
+    }
+
+    async function pushEmployeesToSupabase() {
+        if (!supabaseClient) return;
+        try {
+            await supabaseClient.from('employees').delete().neq('code', '');
+            if (employees.length > 0) {
+                await supabaseClient.from('employees').insert(
+                    employees.map(e => ({ code: e.code, name: e.name }))
+                );
+            }
+        } catch (e) {
+            console.warn('Push employees error:', e);
         }
     }
 
@@ -642,7 +700,7 @@
             });
         });
 
-        btnAddEmployee.addEventListener('click', () => {
+        btnAddEmployee.addEventListener('click', async () => {
             const code = newEmpId.value.trim().toUpperCase();
             const name = newEmpName.value.trim();
 
@@ -660,19 +718,21 @@
             newEmpId.value = '';
             newEmpName.value = '';
             saveData();
+            await pushEmployeesToSupabase();
             renderEmployeeCardsGrid();
             renderAdminEmployeeTable();
             updateDashboardStats();
             showToast(`Đã thêm nhân viên ${code} - ${name}`, 'success');
         });
 
-        empTableBody.addEventListener('click', (e) => {
+        empTableBody.addEventListener('click', async (e) => {
             const delBtn = e.target.closest('.btn-del-emp');
             if (delBtn) {
                 const code = delBtn.dataset.code;
                 if (confirm(`Bạn có chắc chắn xóa nhân viên ${code}?`)) {
                     employees = employees.filter(e => e.code !== code);
                     saveData();
+                    await pushEmployeesToSupabase();
                     renderEmployeeCardsGrid();
                     renderAdminEmployeeTable();
                     updateDashboardStats();
@@ -698,7 +758,7 @@
             }
         });
 
-        btnSaveTimeConfig.addEventListener('click', () => {
+        btnSaveTimeConfig.addEventListener('click', async () => {
             appConfig.targetMonth = parseInt(configMonthSelect.value, 10);
             appConfig.targetYear = parseInt(configYearSelect.value, 10);
             appConfig.startTime = startTimeInput.value;
@@ -706,13 +766,14 @@
             appConfig.isOpenAlways = false;
 
             saveData();
+            await pushConfigToSupabase();
             updateMonthUIHeaders();
             renderDaysGrid();
             checkTimeAndTicker();
             showToast(`Đã lưu cấu hình mở lịch Tháng ${appConfig.targetMonth + 1}/${appConfig.targetYear}!`, 'success');
         });
 
-        btnSetOpenNow.addEventListener('click', () => {
+        btnSetOpenNow.addEventListener('click', async () => {
             appConfig.targetMonth = parseInt(configMonthSelect.value, 10);
             appConfig.targetYear = parseInt(configYearSelect.value, 10);
             appConfig.isOpenAlways = true;
@@ -722,6 +783,7 @@
             endTimeInput.value = '';
 
             saveData();
+            await pushConfigToSupabase();
             updateMonthUIHeaders();
             renderDaysGrid();
             checkTimeAndTicker();
