@@ -91,45 +91,42 @@
             <!-- Dynamic Vector Cards rendered by app.js -->
         </div>
 
-        <!-- COUNTDOWN TIMER OVERLAY & FROSTED GLASS SHIELD -->
-        <div class="countdown-overlay" id="countdownOverlay" style="display: none;">
-            <div class="frosted-glass-curtain"></div>
-            <div class="countdown-card apple-card">
-                <div class="lock-icon-badge">
-                    <i class="fa-solid fa-lock"></i>
+        <!-- COMPACT COUNTDOWN TIMER BAR (Không che khuất Lịch) -->
+        <div class="countdown-compact-bar" id="countdownOverlay" style="display: none;">
+            <div class="cd-compact-card apple-card">
+                <div class="cd-compact-left">
+                    <div class="cd-lock-icon" id="cdLockIcon"><i class="fa-solid fa-hourglass-half"></i></div>
+                    <div>
+                        <h4 id="cdTitleText" style="font-size:15px; font-weight:800; color:#0f172a; margin:0;">Chưa Đến Kỳ Đăng Ký Phép</h4>
+                        <p class="cd-desc" id="cdDescText" style="font-size:12px; color:#64748b; margin:2px 0 0 0;">Tự động mở đăng ký phép tháng tiếp theo:</p>
+                    </div>
                 </div>
-                <h2>LỊCH ĐĂNG KÝ CHƯA MỞ</h2>
-                <p class="cd-desc" id="cdDescText">Đang trong thời gian đếm ngược mở lịch đăng ký.</p>
 
-                <!-- Countdown Clock Digits -->
-                <div class="clock-container">
-                    <div class="clock-unit">
+                <div class="clock-container-compact">
+                    <div class="clock-unit-sm">
                         <span class="clock-num" id="cdDays">00</span>
                         <span class="clock-label">NGÀY</span>
                     </div>
-                    <span class="clock-colon">:</span>
-                    <div class="clock-unit">
+                    <span class="clock-colon-sm">:</span>
+                    <div class="clock-unit-sm">
                         <span class="clock-num" id="cdHours">00</span>
                         <span class="clock-label">GIỜ</span>
                     </div>
-                    <span class="clock-colon">:</span>
-                    <div class="clock-unit">
+                    <span class="clock-colon-sm">:</span>
+                    <div class="clock-unit-sm">
                         <span class="clock-num" id="cdMins">00</span>
                         <span class="clock-label">PHÚT</span>
                     </div>
-                    <span class="clock-colon">:</span>
-                    <div class="clock-unit">
+                    <span class="clock-colon-sm">:</span>
+                    <div class="clock-unit-sm">
                         <span class="clock-num" id="cdSecs">00</span>
                         <span class="clock-label">GIÂY</span>
                     </div>
                 </div>
 
-                <!-- User Guide Action Button inside Countdown Card -->
-                <div class="cd-guide-box">
-                    <button class="btn btn-primary cd-guide-btn" id="btnCountdownGuide">
-                        <i class="fa-solid fa-book-open"></i> Hướng Dẫn Sử Dụng
-                    </button>
-                </div>
+                <button class="btn btn-secondary btn-sm" id="btnCountdownGuide" style="padding:6px 14px; font-size:12px; border-radius:var(--radius-pill);">
+                    <i class="fa-solid fa-book-open"></i> Hướng Dẫn
+                </button>
             </div>
         </div>
 

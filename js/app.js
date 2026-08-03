@@ -335,11 +335,20 @@
         }
     }
 
+    const STORAGE_STATUS_CACHE = 'leave_app_status_cache_v1';
+
     function saveData(broadcast = true) {
         localStorage.setItem(STORAGE_EMPLOYEES, JSON.stringify(employees));
         localStorage.setItem(STORAGE_REGISTRATIONS, JSON.stringify(registrationsList));
         localStorage.setItem(STORAGE_CONFIG, JSON.stringify(appConfig));
         localStorage.setItem(STORAGE_SUPABASE, JSON.stringify(supabaseConfig));
+
+        const statusCache = {};
+        registrationsList.forEach(r => {
+            if (r.id) statusCache[r.id] = r.status;
+            if (r.dateStr && r.empCode) statusCache[`${r.dateStr}_${r.empCode}`] = r.status;
+        });
+        localStorage.setItem(STORAGE_STATUS_CACHE, JSON.stringify(statusCache));
 
         if (broadcast && syncChannel) {
             isInternalUpdate = true;
@@ -454,16 +463,26 @@
 
             // 1. Process Registrations List
             if (!regRes.error && regRes.data) {
-                registrationsList = regRes.data.map(item => ({
-                    id: item.id || `reg_${item.date_str}_${item.emp_code}`,
-                    dateStr: item.date_str,
-                    empCode: item.emp_code,
-                    empName: item.emp_name,
-                    reason: item.note || item.reason || 'Nghỉ phép cá nhân',
-                    status: item.status || 'pending',
-                    adminNote: item.admin_note || '',
-                    createdAt: item.created_at || ''
-                }));
+                let statusCache = {};
+                try {
+                    const savedCache = localStorage.getItem(STORAGE_STATUS_CACHE);
+                    if (savedCache) statusCache = JSON.parse(savedCache);
+                } catch (e) {}
+
+                registrationsList = regRes.data.map(item => {
+                    const itemKey = `${item.date_str}_${item.emp_code}`;
+                    const cachedStatus = statusCache[item.id] || statusCache[itemKey];
+                    return {
+                        id: item.id || `reg_${item.date_str}_${item.emp_code}`,
+                        dateStr: item.date_str,
+                        empCode: item.emp_code,
+                        empName: item.emp_name,
+                        reason: item.note || item.reason || 'Nghỉ phép cá nhân',
+                        status: item.status || cachedStatus || 'pending',
+                        adminNote: item.admin_note || '',
+                        createdAt: item.created_at || ''
+                    };
+                });
             }
 
             // 2. Process App Config
@@ -562,16 +581,19 @@
         timerInterval = setInterval(checkTimeAndTicker, 1000);
     }
 
+    let isRegistrationOpen = true;
+
     function checkTimeAndTicker() {
         const now = getCloudServerNow();
         const mStr = String((appConfig.targetMonth ?? 7) + 1).padStart(2, '0');
         const y = appConfig.targetYear ?? 2026;
 
         if (appConfig.isOpenAlways) {
+            isRegistrationOpen = true;
             countdownOverlay.style.display = 'none';
             topStatusBanner.className = 'top-status-banner open';
-            bannerIcon.className = 'fa-solid fa-lock-open';
-            bannerText.textContent = `ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
+            bannerIcon.className = 'fa-solid fa-circle-check';
+            bannerText.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#22c55e;"></i> MỞ ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
             return;
         }
 
@@ -579,10 +601,11 @@
         const end = appConfig.endTime ? new Date(appConfig.endTime) : null;
 
         if (start && now < start) {
-            countdownOverlay.style.display = 'flex';
+            isRegistrationOpen = false;
+            countdownOverlay.style.display = 'block';
             topStatusBanner.className = 'top-status-banner closed';
             bannerIcon.className = 'fa-solid fa-hourglass-half';
-            bannerText.textContent = `LỊCH ĐĂNG KÝ ĐANG ĐẾM NGƯỢC CHỜ MỞ (THÁNG ${mStr}/${y})`;
+            bannerText.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color:#f59e0b;"></i> CHƯA ĐẾN KỲ ĐĂNG KÝ PHÉP THÁNG ${mStr}/${y}`;
 
             const diff = start - now;
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -595,28 +618,30 @@
             cdMins.textContent = String(mins).padStart(2, '0');
             cdSecs.textContent = String(secs).padStart(2, '0');
 
-            cdDescText.textContent = `Tự động mở lịch đăng ký vào lúc: ${formatDateTime(start)}`;
+            cdDescText.textContent = `Tự động mở đăng ký phép vào lúc: ${formatDateTime(start)}`;
             return;
         }
 
         if (end && now > end) {
-            countdownOverlay.style.display = 'flex';
+            isRegistrationOpen = false;
+            countdownOverlay.style.display = 'block';
             topStatusBanner.className = 'top-status-banner closed';
-            bannerIcon.className = 'fa-solid fa-lock';
-            bannerText.textContent = `LỊCH ĐĂNG KÝ ĐÃ KHÓA / HẾT HẠN (THÁNG ${mStr}/${y})`;
+            bannerIcon.className = 'fa-solid fa-eye';
+            bannerText.innerHTML = `<i class="fa-solid fa-eye" style="color:#0284c7;"></i> CHƯA ĐẾN KỲ ĐĂNG KÝ PHÉP THÁNG ${mStr}/${y}`;
 
             cdDays.textContent = '00';
             cdHours.textContent = '00';
             cdMins.textContent = '00';
             cdSecs.textContent = '00';
-            cdDescText.textContent = `Thời gian đăng ký đã kết thúc lúc: ${formatDateTime(end)}`;
+            cdDescText.textContent = `Thời gian đăng ký phép đã kết thúc lúc: ${formatDateTime(end)}`;
             return;
         }
 
+        isRegistrationOpen = true;
         countdownOverlay.style.display = 'none';
         topStatusBanner.className = 'top-status-banner open';
-        bannerIcon.className = 'fa-solid fa-lock-open';
-        bannerText.textContent = `ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
+        bannerIcon.className = 'fa-solid fa-circle-check';
+        bannerText.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#22c55e;"></i> MỞ ĐĂNG KÝ NGHỈ PHÉP - THÁNG ${mStr}/${y}`;
     }
 
     function formatDateTime(d) {
@@ -811,9 +836,9 @@
             }
         });
 
-        // Direct Card Click on Blue or Amber Card
+        // Direct Card Click on Any Day Card (except Sunday)
         daysListEl.addEventListener('click', (e) => {
-            const clickableCard = e.target.closest('.card-blue, .card-amber');
+            const clickableCard = e.target.closest('.day-card:not(.card-sunday)');
             if (clickableCard) {
                 const dateFormatted = clickableCard.dataset.date;
                 const titleStr = clickableCard.dataset.title;
@@ -822,15 +847,102 @@
                 modalDateInput.value = dateFormatted;
                 registerReason.value = '';
 
-                // Render Pending List in Modal for Employees
-                const pendingForDate = registrationsList
-                    .filter(r => r.dateStr === dateFormatted && r.status === 'pending')
-                    .sort((a, b) => (a.createdAt || String(a.id)).localeCompare(b.createdAt || String(b.id)));
-
+                const registerForm = document.getElementById('registerForm');
                 const pendingListBanner = document.getElementById('pendingListBanner');
                 const pendingItemsContainer = document.getElementById('pendingItemsContainer');
 
+                // Read-Only vs Register Mode Toggle
+                if (!isRegistrationOpen) {
+                    // READ-ONLY MODE
+                    const modalHeaderTitle = document.querySelector('#registerModal .modal-header h3');
+                    if (modalHeaderTitle) {
+                        modalHeaderTitle.innerHTML = `<i class="fa-solid fa-eye" style="color:#0284c7;"></i> Xem Chi Tiết Lịch Nghỉ Phép`;
+                    }
+                    if (registerForm) registerForm.style.display = 'none';
+
+                    if (pendingListBanner && pendingItemsContainer) {
+                        pendingListBanner.style.display = 'block';
+                        pendingListBanner.style.background = '#f0f9ff';
+                        pendingListBanner.style.borderColor = '#bae6fd';
+
+                        const approvedList = registrationsList.filter(r => r.dateStr === dateFormatted && r.status === 'approved');
+                        const pendingList = registrationsList.filter(r => r.dateStr === dateFormatted && r.status === 'pending');
+
+                        let htmlStr = `
+                            <div style="background:#ffffff; border:1px solid #bae6fd; border-radius:10px; padding:10px; margin-bottom:8px; font-size:12px; color:#0369a1; display:flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-lock" style="color:#0284c7;"></i>
+                                <span>Hệ thống chưa đến kỳ đăng ký phép mới. Bạn đang ở chế độ xem lịch công khai.</span>
+                            </div>
+                        `;
+
+                        if (approvedList.length > 0) {
+                            htmlStr += `
+                                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px; margin-bottom:8px;">
+                                    <div style="font-weight:800; font-size:12px; color:#15803d; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                                        <i class="fa-solid fa-user-check" style="color:#22c55e;"></i>
+                                        <span>Đã Được Trưởng Nhóm Phê Duyệt:</span>
+                                    </div>
+                            `;
+                            approvedList.forEach(a => {
+                                htmlStr += `
+                                    <div style="font-size:11px; color:#166534; font-weight:700; padding:4px 0;">
+                                        • ${escapeHtml(a.empCode)} - ${escapeHtml(a.empName)} <span style="font-weight:normal; opacity:0.85;">(Lý do: ${escapeHtml(a.reason || 'Nghỉ phép cá nhân')})</span>
+                                    </div>
+                                `;
+                            });
+                            htmlStr += `</div>`;
+                        } else {
+                            htmlStr += `
+                                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:8px 10px; margin-bottom:8px; font-size:11px; color:#64748b;">
+                                    <i class="fa-solid fa-circle-info"></i> Chưa có nhân viên nào được duyệt nghỉ ngày này.
+                                </div>
+                            `;
+                        }
+
+                        if (pendingList.length > 0) {
+                            htmlStr += `
+                                <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px;">
+                                    <div style="font-weight:800; font-size:12px; color:#b45309; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                        <i class="fa-solid fa-clipboard-list" style="color:#d97706;"></i>
+                                        <span>Đơn Đang Chờ Xét Duyệt (${pendingList.length}):</span>
+                                    </div>
+                            `;
+                            pendingList.forEach((p, idx) => {
+                                htmlStr += `
+                                    <div style="background:#ffffff; border:1px solid #fef08a; padding:6px 8px; border-radius:6px; font-size:11px; margin-bottom:4px;">
+                                        <div style="display:flex; justify-content:space-between; font-weight:700; color:#b45309;">
+                                            <span>#${idx + 1}. ${escapeHtml(p.empCode)} - ${escapeHtml(p.empName)}</span>
+                                            <span style="font-size:10px; opacity:0.85;"><i class="fa-regular fa-clock"></i> ${escapeHtml(p.createdAt || '')}</span>
+                                        </div>
+                                        <div style="color:#475569; font-style:italic;">"Lý do: ${escapeHtml(p.reason || 'Nghỉ phép cá nhân')}"</div>
+                                    </div>
+                                `;
+                            });
+                            htmlStr += `</div>`;
+                        }
+
+                        pendingItemsContainer.innerHTML = htmlStr;
+                    }
+
+                    openModal(registerModal);
+                    return;
+                }
+
+                // REGISTER MODE (isRegistrationOpen === true)
+                const modalHeaderTitle = document.querySelector('#registerModal .modal-header h3');
+                if (modalHeaderTitle) {
+                    modalHeaderTitle.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Đăng Ký Nghỉ Phép`;
+                }
+                if (registerForm) registerForm.style.display = 'block';
+
                 if (pendingListBanner && pendingItemsContainer) {
+                    pendingListBanner.style.background = '#fffbeb';
+                    pendingListBanner.style.borderColor = '#fde68a';
+
+                    const pendingForDate = registrationsList
+                        .filter(r => r.dateStr === dateFormatted && r.status === 'pending')
+                        .sort((a, b) => (a.createdAt || String(a.id)).localeCompare(b.createdAt || String(b.id)));
+
                     if (pendingForDate.length > 0) {
                         pendingListBanner.style.display = 'block';
                         pendingItemsContainer.innerHTML = '';

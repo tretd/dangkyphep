@@ -497,56 +497,82 @@ body.apple-theme {
 .btn-danger:hover { background: #be123c; }
 .btn-sm { padding: 4px 10px; font-size: 12px; width: auto; }
 
-/* COUNTDOWN OVERLAY & USER GUIDE BUTTON */
-.countdown-overlay {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    min-height: 480px; z-index: 50;
-    display: flex; align-items: flex-start; justify-content: center;
-    padding-top: 30px;
+/* COMPACT COUNTDOWN TIMER BAR */
+.countdown-compact-bar {
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 10;
 }
 
-.frosted-glass-curtain {
-    position: absolute; inset: 0;
-    background: rgba(248, 250, 252, 0.92);
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
-    border-radius: var(--radius-apple);
-}
-
-.countdown-card.apple-card {
-    position: relative; z-index: 2;
+.cd-compact-card {
     background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 20px;
-    padding: 30px 24px;
+    border: 1px solid rgba(2, 132, 199, 0.2);
+    border-radius: 16px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    box-shadow: 0 4px 15px rgba(2, 132, 199, 0.08);
+    flex-wrap: wrap;
+}
+
+.cd-compact-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cd-lock-icon {
+    width: 40px;
+    height: 40px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #0284c7;
+    flex-shrink: 0;
+}
+
+.clock-container-compact {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.clock-unit-sm {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 6px 10px;
+    border-radius: 8px;
     text-align: center;
-    max-width: 520px; width: 90%;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+    min-width: 46px;
 }
 
-.lock-icon-badge {
-    width: 50px; height: 50px;
-    margin: 0 auto 12px auto;
-    background: #fff1f2; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; color: #e11d48; border: 1px solid #fecdd3;
+.clock-unit-sm .clock-num {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0284c7;
+    font-family: monospace;
+    display: block;
+    line-height: 1;
 }
 
-.countdown-card h2 { font-size: 19px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
-.cd-desc { font-size: 12px; color: #64748b; margin-bottom: 16px; }
+.clock-unit-sm .clock-label {
+    font-size: 8px;
+    font-weight: 700;
+    color: #64748b;
+    margin-top: 2px;
+    display: block;
+}
 
-.clock-container { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; }
-.clock-unit { background: #f0f9ff; border: 1px solid #bae6fd; padding: 10px 12px; border-radius: 12px; min-width: 60px; }
-.clock-num { display: block; font-size: 24px; font-weight: 800; color: #0284c7; line-height: 1; font-family: monospace; }
-.clock-label { display: block; font-size: 9px; font-weight: 700; color: #0369a1; margin-top: 3px; }
-.clock-colon { font-size: 20px; font-weight: 800; color: #0284c7; margin-bottom: 8px; }
-
-.cd-guide-box { margin-top: 10px; }
-.cd-guide-btn {
-    padding: 9px 22px;
-    font-size: 13px;
-    border-radius: var(--radius-pill);
-    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.3);
+.clock-colon-sm {
+    font-weight: 800;
+    color: #0284c7;
+    font-size: 16px;
 }
 
 /* ==========================================================================
