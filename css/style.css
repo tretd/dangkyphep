@@ -668,6 +668,39 @@ body.apple-theme {
 .modal-small { max-width: 380px; }
 .modal-large { max-width: 740px; }
 
+/* FULLSCREEN ADMIN DASHBOARD MODAL */
+#adminModal .modal-content,
+.modal-fullscreen {
+    max-width: 96vw !important;
+    width: 96vw !important;
+    height: 92vh !important;
+    max-height: 92vh !important;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.25);
+}
+
+#adminModal .modal-header {
+    padding: 16px 28px;
+}
+
+#adminModal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 28px;
+}
+
+#adminModal .table-responsive {
+    max-height: calc(92vh - 220px) !important;
+}
+
+#adminModal .data-table th,
+#adminModal .data-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+}
+
 .modal-header { background: #f8fafc; padding: 14px 18px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
 .modal-header h3 { font-size: 15px; font-weight: 800; color: #0f172a; }
 .close-btn { background: transparent; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; }
