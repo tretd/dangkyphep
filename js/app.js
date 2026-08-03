@@ -165,9 +165,12 @@
             const cleanUrl = sanitizeSupabaseUrl(supabaseConfig.url || DEFAULT_SUPABASE.url);
             const activeKey = supabaseConfig.key || DEFAULT_SUPABASE.key;
             
-            const res = await fetch(`${cleanUrl}/rest/v1/`, {
-                method: 'HEAD',
-                headers: { 'apikey': activeKey }
+            const res = await fetch(`${cleanUrl}/rest/v1/app_config?select=id&limit=1`, {
+                method: 'GET',
+                headers: { 
+                    'apikey': activeKey,
+                    'Authorization': `Bearer ${activeKey}`
+                }
             });
             const dateHead = res.headers.get('date');
             if (dateHead) {
@@ -879,12 +882,30 @@
             if (supabaseClient) {
                 updateCloudBadge('syncing', 'Đang gửi đơn...');
                 try {
-                    const { error } = await supabaseClient.from('registrations').insert([newRegRecord]);
+                    let { error } = await supabaseClient.from('registrations').insert([newRegRecord]);
+
+                    // Fallback for old schema if columns 'id', 'reason', or 'status' don't exist on user's Supabase yet
+                    if (error && (error.code === 'PGRST204' || error.code === '42703' || (error.message && (error.message.includes('column') || error.message.includes('find') || error.message.includes('400'))))) {
+                        console.warn('Supabase schema mismatch detected. Retrying with fallback payload...');
+                        const fallbackPayload = {
+                            date_str: dateStr,
+                            emp_code: empCode,
+                            emp_name: empName,
+                            note: reasonVal,
+                            created_at: nowStr
+                        };
+                        const fallbackRes = await supabaseClient.from('registrations').insert([fallbackPayload]);
+                        error = fallbackRes.error;
+                    }
 
                     if (error) {
                         console.error('Supabase registration error:', error);
                         updateCloudBadge('offline', 'Lỗi Cloud');
-                        showToast(`Không thể đồng bộ Cloud: ${error.message}`, 'error');
+                        if (error.code === '23505' || (error.message && error.message.includes('duplicate'))) {
+                            showToast(`Rất tiếc! Ngày này đã được đăng ký từ trước.`, 'error');
+                        } else {
+                            showToast(`Lỗi Cloud: ${error.message}. Hãy chạy lại file SQL trên Supabase!`, 'error');
+                        }
                         await fetchSupabaseData(true);
                         closeModal(registerModal);
                         return;
