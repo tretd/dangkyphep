@@ -25,8 +25,8 @@
             <span class="banner-pulse"></span>
             <i class="fa-solid fa-lock-open" id="bannerIcon"></i>
             <span id="bannerText">ĐĂNG KÝ NGHỈ PHÉP - THÁNG 08/2026</span>
-            <span class="cloud-status-chip online" id="cloudStatusChip" title="Trạng thái kết nối Supabase Cloud Realtime">
-                <i class="fa-solid fa-cloud" id="cloudStatusIcon"></i> <span id="cloudStatusText">Online</span>
+            <span class="cloud-status-chip online" id="cloudStatusChip" title="Supabase Cloud Realtime Đang Đồng Bộ">
+                <i class="fa-solid fa-circle" id="cloudStatusIcon" style="font-size: 8px; color: #22c55e;"></i>
             </span>
         </div>
     </div>
@@ -337,6 +337,9 @@
                     <button class="tab-btn" data-tab="tabManageRegs">
                         <i class="fa-solid fa-calendar-check"></i> <span>Quản Lý Lịch</span>
                     </button>
+                    <button class="tab-btn" data-tab="tabSundayShifts">
+                        <i class="fa-solid fa-user-clock"></i> <span>Phân Công Chủ Nhật</span>
+                    </button>
                     <button class="tab-btn" data-tab="tabTimeWindow">
                         <i class="fa-solid fa-clock"></i> <span>Cấu Hình Tháng & Giờ</span>
                     </button>
@@ -423,6 +426,25 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Tab 5: Sunday Shift Assignments -->
+                <div class="tab-content" id="tabSundayShifts">
+                    <div class="approval-header-card" style="margin-bottom:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                            <div>
+                                <h4 style="font-size:16px; font-weight:800; color:#0f172a; margin-bottom:4px;"><i class="fa-solid fa-user-clock" style="color:#0284c7;"></i> Phân Công Nhân Viên Làm Ngày Chủ Nhật</h4>
+                                <p style="font-size:12px; color:#64748b;">Trực Chủ Nhật: Chọn tối đa 02 nhân viên đi làm / trực cho mỗi ngày Chủ Nhật trong tháng.</p>
+                            </div>
+                            <button type="button" class="btn btn-primary" id="btnSaveSundayShifts" style="padding:8px 18px; font-weight:700; border-radius:var(--radius-pill);">
+                                <i class="fa-solid fa-floppy-disk"></i> Lưu Phân Công Chủ Nhật
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="sundayShiftsGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:14px;">
+                        <!-- Dynamic Sunday Shift Cards rendered by app.js -->
                     </div>
                 </div>
 

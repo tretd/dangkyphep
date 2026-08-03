@@ -237,15 +237,26 @@
     function updateCloudBadge(state, text) {
         if (!cloudStatusChip) return;
         cloudStatusChip.className = `cloud-status-chip ${state}`;
+        const titleMsg = text || (state === 'online' ? 'Supabase Cloud Realtime Đang Đồng Bộ' : (state === 'syncing' ? 'Đang Đồng Bộ Cloud...' : 'Ngoại Tuyến'));
+        cloudStatusChip.title = titleMsg;
+
+        if (cloudStatusText) cloudStatusText.style.display = 'none';
+
         if (state === 'online') {
-            if (cloudStatusIcon) cloudStatusIcon.className = 'fa-solid fa-cloud-check';
-            if (cloudStatusText) cloudStatusText.textContent = text || 'Cloud Realtime';
+            if (cloudStatusIcon) {
+                cloudStatusIcon.className = 'fa-solid fa-circle';
+                cloudStatusIcon.style.color = '#22c55e';
+            }
         } else if (state === 'syncing') {
-            if (cloudStatusIcon) cloudStatusIcon.className = 'fa-solid fa-spinner fa-spin';
-            if (cloudStatusText) cloudStatusText.textContent = text || 'Đang đồng bộ...';
+            if (cloudStatusIcon) {
+                cloudStatusIcon.className = 'fa-solid fa-circle-notch fa-spin';
+                cloudStatusIcon.style.color = '#f59e0b';
+            }
         } else {
-            if (cloudStatusIcon) cloudStatusIcon.className = 'fa-solid fa-cloud-slash';
-            if (cloudStatusText) cloudStatusText.textContent = text || 'Ngoại tuyến';
+            if (cloudStatusIcon) {
+                cloudStatusIcon.className = 'fa-solid fa-circle';
+                cloudStatusIcon.style.color = '#ef4444';
+            }
         }
     }
 
@@ -691,12 +702,31 @@
 
             // 1. RED CARD: SUNDAY
             if (isSunday) {
-                card.className = 'compact-card card-red';
+                card.className = 'compact-card card-red card-sunday';
+                card.dataset.date = dateFormatted;
+                card.dataset.title = `Chủ Nhật, ${displayDateStr}/${targetYear}`;
+
+                const sundayAssignedCodes = appConfig.sundayShifts ? (appConfig.sundayShifts[dateFormatted] || []) : [];
+                let sundayAssignedHtml = '';
+                if (sundayAssignedCodes.length > 0) {
+                    const sundayAssignedEmps = sundayAssignedCodes.map(code => {
+                        const emp = employees.find(e => e.code === code);
+                        return emp ? `${emp.code} - ${emp.name}` : code;
+                    });
+                    sundayAssignedHtml = `
+                        <div class="card-body-text" style="color:#0369a1; font-size:10px; font-weight:700; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:4px 6px; margin-top:4px;" title="Trực Chủ Nhật">
+                            <i class="fa-solid fa-user-clock" style="margin-right:4px; color:#0284c7;"></i>
+                            Trực CN: ${escapeHtml(sundayAssignedEmps.join(' & '))}
+                        </div>
+                    `;
+                }
+
                 card.innerHTML = `
                     <div class="card-top">
                         <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/${mStr}</span>
                         <span class="card-day-name">${dayName}</span>
                     </div>
+                    ${sundayAssignedHtml}
                 `;
             }
             // 2. GREEN CARD: HAS APPROVED REGISTRATION (Renders Approved Employee Name!)
@@ -788,6 +818,79 @@
         empTableCount.textContent = employees.length;
     }
 
+    function renderAdminSundayShifts() {
+        const gridEl = document.getElementById('sundayShiftsGrid');
+        if (!gridEl) return;
+        gridEl.innerHTML = '';
+
+        const m = appConfig.targetMonth ?? 7;
+        const y = appConfig.targetYear ?? 2026;
+        const mStr = String(m + 1).padStart(2, '0');
+
+        const sundays = [];
+        const totalDays = new Date(y, m + 1, 0).getDate();
+        for (let d = 1; d <= totalDays; d++) {
+            const dateObj = new Date(y, m, d);
+            if (dateObj.getDay() === 0) {
+                const dateStr = `${y}-${mStr}-${String(d).padStart(2, '0')}`;
+                sundays.push({ dateStr, dayNum: d });
+            }
+        }
+
+        if (sundays.length === 0) {
+            gridEl.innerHTML = '<div style="color:#64748b; font-size:13px;">Không tìm thấy ngày Chủ Nhật nào trong tháng này.</div>';
+            return;
+        }
+
+        appConfig.sundayShifts = appConfig.sundayShifts || {};
+
+        sundays.forEach(sun => {
+            const currentSelected = appConfig.sundayShifts[sun.dateStr] || [];
+            const cardBlock = document.createElement('div');
+            cardBlock.className = 'sunday-card-block apple-card';
+            cardBlock.dataset.date = sun.dateStr;
+            cardBlock.style.cssText = 'background:#ffffff; border:1px solid #bae6fd; border-radius:14px; padding:14px; box-shadow:0 2px 8px rgba(0,0,0,0.04);';
+
+            let empChipsHtml = '';
+            employees.forEach(emp => {
+                const isChecked = currentSelected.includes(emp.code) ? 'checked' : '';
+                empChipsHtml += `
+                    <label style="display:inline-flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; padding:5px 10px; border-radius:8px; font-size:12px; cursor:pointer; user-select:none;">
+                        <input type="checkbox" class="cb-sunday-emp" value="${escapeHtml(emp.code)}" ${isChecked} style="accent-color:#0284c7; cursor:pointer;">
+                        <span style="font-weight:600; color:#334155;">${escapeHtml(emp.code)} - ${escapeHtml(emp.name)}</span>
+                    </label>
+                `;
+            });
+
+            cardBlock.innerHTML = `
+                <div style="font-weight:800; font-size:13px; color:#0369a1; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e0f2fe; padding-bottom:8px;">
+                    <span><i class="fa-solid fa-calendar-day" style="color:#0284c7;"></i> Chủ Nhật, ${String(sun.dayNum).padStart(2, '0')}/${mStr}/${y}</span>
+                    <span class="selected-count-badge" style="font-size:11px; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:10px;">Đã chọn ${currentSelected.length}/2</span>
+                </div>
+                <div class="emp-chips-wrapper" style="display:flex; flex-wrap:wrap; gap:8px; max-height:160px; overflow-y:auto; padding-right:4px;">
+                    ${empChipsHtml}
+                </div>
+            `;
+
+            // Max 2 Enforcement
+            cardBlock.addEventListener('change', (e) => {
+                const checkedCbs = cardBlock.querySelectorAll('.cb-sunday-emp:checked');
+                const badge = cardBlock.querySelector('.selected-count-badge');
+
+                if (checkedCbs.length > 2) {
+                    e.target.checked = false;
+                    const newCount = cardBlock.querySelectorAll('.cb-sunday-emp:checked').length;
+                    if (badge) badge.textContent = `Đã chọn ${newCount}/2`;
+                    showToast('Mỗi ngày Chủ Nhật chỉ được phân công tối đa 02 nhân viên!', 'warning');
+                } else {
+                    if (badge) badge.textContent = `Đã chọn ${checkedCbs.length}/2`;
+                }
+            });
+
+            gridEl.appendChild(cardBlock);
+        });
+    }
+
     function setupEventListeners() {
         searchInput.addEventListener('input', (e) => {
             searchQuery = e.target.value;
@@ -827,6 +930,7 @@
             if (inputPass === ADMIN_PASSCODE) {
                 closeModal(passwordModal);
                 renderAdminRegsTable();
+                renderAdminSundayShifts();
                 openModal(adminModal);
                 showToast('Xác thực Trưởng nhóm thành công!', 'success');
             } else {
@@ -1250,6 +1354,32 @@
             checkTimeAndTicker();
             showToast(`🔒 Đã lưu cấu hình KHÓA ĐẾM NGƯỢC Tháng ${appConfig.targetMonth + 1}/${appConfig.targetYear}!`, 'success');
         });
+
+        const btnSaveSundayShifts = document.getElementById('btnSaveSundayShifts');
+        if (btnSaveSundayShifts) {
+            btnSaveSundayShifts.addEventListener('click', async () => {
+                const newSundayShifts = {};
+                document.querySelectorAll('.sunday-card-block').forEach(block => {
+                    const dStr = block.dataset.date;
+                    const selectedCodes = Array.from(block.querySelectorAll('.cb-sunday-emp:checked')).map(cb => cb.value);
+                    if (selectedCodes.length > 0) {
+                        newSundayShifts[dStr] = selectedCodes;
+                    }
+                });
+
+                appConfig.sundayShifts = newSundayShifts;
+                saveData();
+
+                if (supabaseClient) {
+                    updateCloudBadge('syncing', 'Đang lưu...');
+                    await pushConfigToSupabase();
+                    updateCloudBadge('online', 'Cloud Realtime');
+                }
+
+                renderDaysGrid();
+                showToast(`🎉 Đã lưu lịch phân công Chủ Nhật cho Tháng ${(appConfig.targetMonth ?? 7) + 1}/${appConfig.targetYear ?? 2026}!`, 'success');
+            });
+        }
 
         btnSetOpenNow.addEventListener('click', async () => {
             const oldConfig = { ...appConfig };
