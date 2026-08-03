@@ -714,9 +714,9 @@
                         return emp ? `${emp.code} - ${emp.name}` : code;
                     });
                     sundayAssignedHtml = `
-                        <div class="card-body-text" style="color:#0369a1; font-size:10px; font-weight:700; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:4px 6px; margin-top:4px;" title="Trực Chủ Nhật">
-                            <i class="fa-solid fa-user-clock" style="margin-right:4px; color:#0284c7;"></i>
-                            Trực CN: ${escapeHtml(sundayAssignedEmps.join(' & '))}
+                        <div class="card-body-text" title="Trực Chủ Nhật">
+                            <i class="fa-solid fa-user-clock" style="margin-right:6px; color:#e11d48;"></i>
+                            ${escapeHtml(sundayAssignedEmps.join(' & '))}
                         </div>
                     `;
                 }
@@ -771,9 +771,6 @@
                     <div class="card-top">
                         <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/${mStr}</span>
                         <span class="card-day-name">${dayName}</span>
-                    </div>
-                    <div class="card-body-text">
-                        <i class="fa-regular fa-circle" style="margin-right:6px;"></i> Chưa chọn
                     </div>
                 `;
             }
