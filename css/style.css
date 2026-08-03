@@ -752,3 +752,98 @@ body.apple-theme {
     .emp-card-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
     .guide-steps-grid { grid-template-columns: 1fr; }
 }
+
+/* APPROVAL STATUS BADGES & AMBER PENDING CARDS */
+.badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.badge-pending {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
+.badge-approved {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.badge-rejected {
+    background: #ffe4e6;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+}
+
+.appr-filter-btn {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.appr-filter-btn.active {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
+}
+
+/* Amber Card (Chờ Duyệt) */
+.compact-card.card-amber {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #fde68a;
+}
+
+.compact-card.card-amber .card-date-badge {
+    color: #b45309;
+}
+
+.compact-card.card-amber .card-day-name {
+    color: #d97706;
+}
+
+.btn-appr-approve {
+    background: #16a34a;
+    color: #ffffff;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-appr-approve:hover {
+    background: #15803d;
+}
+
+.btn-appr-reject {
+    background: #dc2626;
+    color: #ffffff;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-appr-reject:hover {
+    background: #b91c1c;
+}
+

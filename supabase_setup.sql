@@ -1,15 +1,18 @@
 -- ==========================================================================
--- HƯỚNG DẪN TẠO BẢNG SUPABASE CHO TOOL ĐĂNG KÝ NGHỈ PHÉP (FULL REALTIME CLOUD)
+-- HƯỚNG DẪN TẠO BẢNG SUPABASE CHO TOOL ĐĂNG KÝ NGHỈ PHÉP (HỖ TRỢ DUYỆT LỊCH & LÝ DO)
 -- Copy và dán toàn bộ đoạn code này vào mục "SQL Editor" trên trang Supabase.com
 -- ==========================================================================
 
--- 1. Bảng lưu trữ thông tin đăng ký nghỉ phép
+-- 1. Bảng lưu trữ thông tin đơn đăng ký nghỉ phép (Hỗ trợ nhiều đơn/ngày, lý do & trạng thái duyệt)
 CREATE TABLE IF NOT EXISTS registrations (
-    date_str VARCHAR(20) PRIMARY KEY, -- Định dạng: "2026-08-01" (Khóa chính đảm bảo tối đa 1 người / 1 ngày)
-    emp_code VARCHAR(50) NOT NULL,    -- Mã Nhân Viên (VD: NV001)
-    emp_name VARCHAR(255) NOT NULL,   -- Tên Nhân Viên (VD: Nguyễn Văn A)
-    note TEXT,                        -- Ghi chú nếu có
-    created_at VARCHAR(100)           -- Thời gian đăng ký
+    id VARCHAR(100) PRIMARY KEY,         -- Mã đơn duy nhất (VD: reg_1722700000_nv001)
+    date_str VARCHAR(20) NOT NULL,        -- Ngày xin nghỉ: "2026-08-01"
+    emp_code VARCHAR(50) NOT NULL,        -- Mã Nhân Viên (VD: NV001)
+    emp_name VARCHAR(255) NOT NULL,       -- Tên Nhân Viên (VD: Nguyễn Văn A)
+    reason TEXT NOT NULL,                 -- Lý do xin nghỉ phép
+    status VARCHAR(20) DEFAULT 'pending', -- Trạng thái: 'pending' (Chờ duyệt), 'approved' (Đã duyệt), 'rejected' (Từ chối)
+    admin_note TEXT,                      -- Ghi chú Trưởng nhóm
+    created_at VARCHAR(100)               -- Thời gian tạo đơn
 );
 
 -- 2. Bảng lưu trữ cấu hình Tháng, Năm & Khung giờ đếm ngược
@@ -68,5 +71,6 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE employees;
     END IF;
 END $$;
+
 
 

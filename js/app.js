@@ -1,12 +1,9 @@
 /* ==========================================================================
    Tool Đăng Ký Nghỉ Phép
-   JavaScript Application Core (Realtime Full Cloud Sync & Loop Fix)
+   JavaScript Application Core (Multi-User Approval & Reason Realtime Sync)
    ========================================================================== */
 
 (function () {
-    // ----------------------------------------------------------------------
-    // Dynamic Favicon Setter Helper
-    // ----------------------------------------------------------------------
     function setFaviconUrl(url) {
         let link = document.querySelector("link[rel*='icon']");
         if (!link) {
@@ -20,9 +17,6 @@
     
     setFaviconUrl('https://iili.io/F66acRs.png');
 
-    // ----------------------------------------------------------------------
-    // Supabase URL Sanitizer Helper
-    // ----------------------------------------------------------------------
     function sanitizeSupabaseUrl(url) {
         if (!url) return '';
         let cleaned = url.trim();
@@ -31,13 +25,10 @@
         return cleaned;
     }
 
-    // ----------------------------------------------------------------------
-    // 1. Constants & Persistent Storage Keys
-    // ----------------------------------------------------------------------
     const ADMIN_PASSCODE = 'Cuong@032';
 
     const STORAGE_EMPLOYEES = 'leave_app_employees_data';
-    const STORAGE_REGISTRATIONS = 'leave_app_registrations_data';
+    const STORAGE_REGISTRATIONS = 'leave_app_registrations_v9';
     const STORAGE_CONFIG = 'leave_app_config_data';
     const STORAGE_SUPABASE = 'leave_app_supabase_data';
 
@@ -51,7 +42,6 @@
         { code: 'NV005', name: 'Hoàng Thị Em' }
     ];
 
-    // Default Month set to August 2026 (0-indexed: 7 = August)
     const DEFAULT_CONFIG = {
         targetMonth: 7, 
         targetYear: 2026,
@@ -60,27 +50,25 @@
         isOpenAlways: true
     };
 
-    // Pre-configured Active Supabase Cloud Project Credentials (Built-in Auto Sync)
     const DEFAULT_SUPABASE = {
         url: 'https://duyttseooezluyhvwnud.supabase.co',
         key: 'sb_publishable_BYEpFH4CdWD6gZtXnZVacg_uIEX_cxK'
     };
 
     let employees = [];
-    let registrations = {};
+    let registrationsList = []; // Array of { id, dateStr, empCode, empName, reason, status, adminNote, createdAt }
     let appConfig = { ...DEFAULT_CONFIG };
     let supabaseConfig = { ...DEFAULT_SUPABASE };
     let supabaseClient = null;
     let activeFilter = 'all';
+    let activeApprFilter = 'all';
     let searchQuery = '';
     let timerInterval = null;
     let isInternalUpdate = false;
 
     const DAY_NAMES = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
-    // ----------------------------------------------------------------------
-    // 2. DOM Elements
-    // ----------------------------------------------------------------------
+    // DOM Elements
     const topStatusBanner = document.getElementById('topStatusBanner');
     const bannerIcon = document.getElementById('bannerIcon');
     const bannerText = document.getElementById('bannerText');
@@ -127,6 +115,7 @@
     const modalDateInput = document.getElementById('modalDateInput');
     const empCardGrid = document.getElementById('empCardGrid');
     const selectedEmpValue = document.getElementById('selectedEmpValue');
+    const registerReason = document.getElementById('registerReason');
 
     // Admin Modal
     const adminModal = document.getElementById('adminModal');
@@ -142,6 +131,12 @@
     const empTableBody = document.getElementById('empTableBody');
     const empTableCount = document.getElementById('empTableCount');
     const adminRegsTableBody = document.getElementById('adminRegsTableBody');
+
+    // Admin Approval Counters
+    const cntAllRegs = document.getElementById('cntAllRegs');
+    const cntPendingRegs = document.getElementById('cntPendingRegs');
+    const cntApprovedRegs = document.getElementById('cntApprovedRegs');
+    const cntRejectedRegs = document.getElementById('cntRejectedRegs');
 
     const startTimeInput = document.getElementById('startTimeInput');
     const endTimeInput = document.getElementById('endTimeInput');
@@ -159,9 +154,7 @@
     let realtimeChannel = null;
     let isFetchingCloud = false;
 
-    // ----------------------------------------------------------------------
-    // 3. Initialization
-    // ----------------------------------------------------------------------
+    // Initialization
     function init() {
         loadData();
         setupEventListeners();
@@ -189,7 +182,6 @@
             };
         }
 
-        // Auto-refresh from cloud when tab becomes active
         window.addEventListener('focus', () => {
             if (supabaseClient) fetchSupabaseData(true);
         });
@@ -200,7 +192,6 @@
             }
         });
 
-        // Polling fallback every 15 seconds
         setInterval(() => {
             if (supabaseClient) fetchSupabaseData(true);
         }, 15000);
@@ -222,20 +213,47 @@
     }
 
     function loadData() {
-        let savedEmp = localStorage.getItem(STORAGE_EMPLOYEES) || localStorage.getItem('leave_app_employees_v8') || localStorage.getItem('leave_app_employees_v5');
+        let savedEmp = localStorage.getItem(STORAGE_EMPLOYEES) || localStorage.getItem('leave_app_employees_v8');
         employees = savedEmp ? JSON.parse(savedEmp) : [...DEFAULT_EMPLOYEES];
 
-        let savedRegs = localStorage.getItem(STORAGE_REGISTRATIONS) || localStorage.getItem('leave_app_registrations_v8') || localStorage.getItem('leave_app_registrations_v5');
-        registrations = savedRegs ? JSON.parse(savedRegs) : {};
+        let savedRegs = localStorage.getItem(STORAGE_REGISTRATIONS) || localStorage.getItem('leave_app_registrations_data');
+        if (savedRegs) {
+            try {
+                const parsed = JSON.parse(savedRegs);
+                if (Array.isArray(parsed)) {
+                    registrationsList = parsed;
+                } else if (typeof parsed === 'object') {
+                    // Convert old object structure to new array
+                    registrationsList = [];
+                    Object.keys(parsed).forEach(dateStr => {
+                        const item = parsed[dateStr];
+                        registrationsList.push({
+                            id: `reg_${dateStr}_${item.empCode}`,
+                            dateStr: dateStr,
+                            empCode: item.empCode,
+                            empName: item.empName,
+                            reason: item.note || 'Nghỉ phép cá nhân',
+                            status: 'approved',
+                            adminNote: '',
+                            createdAt: item.time || ''
+                        });
+                    });
+                }
+            } catch (e) {
+                registrationsList = [];
+            }
+        } else {
+            registrationsList = [];
+        }
 
-        let savedConfig = localStorage.getItem(STORAGE_CONFIG) || localStorage.getItem('leave_app_config_v8') || localStorage.getItem('leave_app_config_v5');
+        let savedConfig = localStorage.getItem(STORAGE_CONFIG) || localStorage.getItem('leave_app_config_v8');
         appConfig = savedConfig ? JSON.parse(savedConfig) : { ...DEFAULT_CONFIG };
 
         if (appConfig.targetMonth === undefined || appConfig.targetMonth === null) {
-            appConfig.targetMonth = 7; // August 2026
+            appConfig.targetMonth = 7;
         }
 
-        let savedSupa = localStorage.getItem(STORAGE_SUPABASE) || localStorage.getItem('leave_app_supabase_v8') || localStorage.getItem('leave_app_supabase_v5');
+        let savedSupa = localStorage.getItem(STORAGE_SUPABASE);
         if (savedSupa) {
             try {
                 const parsed = JSON.parse(savedSupa);
@@ -282,7 +300,7 @@
 
     function saveData(broadcast = true) {
         localStorage.setItem(STORAGE_EMPLOYEES, JSON.stringify(employees));
-        localStorage.setItem(STORAGE_REGISTRATIONS, JSON.stringify(registrations));
+        localStorage.setItem(STORAGE_REGISTRATIONS, JSON.stringify(registrationsList));
         localStorage.setItem(STORAGE_CONFIG, JSON.stringify(appConfig));
         localStorage.setItem(STORAGE_SUPABASE, JSON.stringify(supabaseConfig));
 
@@ -298,13 +316,10 @@
         const y = appConfig.targetYear ?? 2026;
         const mStr = String(m).padStart(2, '0');
 
-        appHeaderSub.textContent = `THÁNG ${mStr} / ${y} • TỐI ĐA 1 NGƯỜI / NGÀY`;
+        appHeaderSub.textContent = `THÁNG ${mStr} / ${y} • ĐĂNG KÝ & DUYỆT LỊCH PHÉP`;
         gridTitleSection.innerHTML = `<i class="fa-solid fa-calendar-days"></i> Lịch Đăng Ký Tháng ${mStr}/${y}`;
     }
 
-    // ----------------------------------------------------------------------
-    // 4. Supabase Cloud Sync (Full Sync: Registrations, Config, Employees)
-    // ----------------------------------------------------------------------
     function initSupabaseIfConfigured() {
         const cleanUrl = sanitizeSupabaseUrl(supabaseConfig.url || DEFAULT_SUPABASE.url);
         const activeKey = supabaseConfig.key || DEFAULT_SUPABASE.key;
@@ -345,7 +360,6 @@
                     (payload) => {
                         console.log('⚡ Supabase Realtime Event Received:', payload);
                         
-                        // Live Toast Notification when another user registers or changes data
                         if (payload.table === 'registrations') {
                             if (payload.eventType === 'INSERT' && payload.new) {
                                 const dStr = payload.new.date_str || '';
@@ -353,12 +367,23 @@
                                 const dateFormatted = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dStr;
                                 const empCode = payload.new.emp_code || '';
                                 const empName = payload.new.emp_name || '';
-                                showToast(`🔔 Thông báo: ${empCode} - ${empName} vừa đăng ký nghỉ phép ngày ${dateFormatted}!`, 'success');
+                                const reason = payload.new.reason || '';
+                                showToast(`🔔 ${empCode} - ${empName} vừa gửi đơn xin nghỉ ngày ${dateFormatted}! (Lý do: ${reason})`, 'warning');
+                            } else if (payload.eventType === 'UPDATE' && payload.new) {
+                                const dStr = payload.new.date_str || '';
+                                const parts = dStr.split('-');
+                                const dateFormatted = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dStr;
+                                const empName = payload.new.emp_name || '';
+                                if (payload.new.status === 'approved') {
+                                    showToast(`🎉 Trưởng nhóm đã DUYỆT đơn nghỉ ngày ${dateFormatted} cho ${empName}!`, 'success');
+                                } else if (payload.new.status === 'rejected') {
+                                    showToast(`ℹ️ Đơn nghỉ ngày ${dateFormatted} của ${empName} đã chuyển trạng thái TỪ CHỐI.`, 'info');
+                                }
                             } else if (payload.eventType === 'DELETE') {
-                                showToast(`ℹ️ Lượt đăng ký nghỉ phép vừa được cập nhật trên Cloud.`, 'info');
+                                showToast(`ℹ️ Đã cập nhật lại lịch nghỉ phép từ Trưởng nhóm.`, 'info');
                             }
                         } else if (payload.table === 'app_config') {
-                            showToast(`🔔 Cấu hình khung giờ / mở lịch vừa được Trưởng nhóm cập nhật!`, 'info');
+                            showToast(`🔔 Cấu hình đếm ngược mở lịch vừa được cập nhật!`, 'info');
                         } else if (payload.table === 'employees') {
                             showToast(`🔔 Danh sách nhân viên vừa được cập nhật từ Cloud!`, 'info');
                         }
@@ -367,7 +392,6 @@
                     }
                 )
                 .subscribe((status) => {
-                    console.log('📡 Supabase Realtime Status:', status);
                     if (status === 'SUBSCRIBED') {
                         updateCloudBadge('online', 'Cloud Realtime');
                     } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
@@ -391,18 +415,18 @@
                 supabaseClient.from('employees').select('*')
             ]);
 
-            // 1. Process Registrations
+            // 1. Process Registrations List
             if (!regRes.error && regRes.data) {
-                const cloudRegs = {};
-                regRes.data.forEach(item => {
-                    cloudRegs[item.date_str] = {
-                        empCode: item.emp_code,
-                        empName: item.emp_name,
-                        note: item.note || '',
-                        time: item.created_at || ''
-                    };
-                });
-                registrations = cloudRegs;
+                registrationsList = regRes.data.map(item => ({
+                    id: item.id || `reg_${item.date_str}_${item.emp_code}`,
+                    dateStr: item.date_str,
+                    empCode: item.emp_code,
+                    empName: item.emp_name,
+                    reason: item.reason || '',
+                    status: item.status || 'pending',
+                    adminNote: item.admin_note || '',
+                    createdAt: item.created_at || ''
+                }));
             }
 
             // 2. Process App Config
@@ -433,7 +457,7 @@
 
             supabaseStatusAlert.innerHTML = `
                 <div class="alert alert-warning" style="background:#f0fdf4; border-color:#86efac; color:#15803d; padding:10px; border-radius:8px;">
-                    <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công! Dữ liệu đang được đồng bộ Realtime giữa tất cả thiết bị.
+                    <i class="fa-solid fa-cloud-check"></i> Đã kết nối Supabase Cloud Database thành công! Dữ liệu được đồng bộ Realtime.
                 </div>`;
 
             updateCloudBadge('online', 'Cloud Realtime');
@@ -447,9 +471,8 @@
             checkTimeAndTicker();
 
         } catch (e) {
-            console.warn('Supabase network connection failed (running offline/local mode):', e);
-            updateCloudBadge('offline', 'Mất kết nối Cloud');
-            supabaseStatusAlert.innerHTML = `<div class="alert alert-warning" style="color:#64748b; background:#f8fafc; border:1px solid #cbd5e1; padding:10px; border-radius:8px;"><i class="fa-solid fa-circle-info"></i> Tự động làm việc ở chế độ lưu trữ mượt mà!</div>`;
+            console.warn('Supabase network connection failed:', e);
+            updateCloudBadge('offline', 'Ngoại tuyến');
         } finally {
             isFetchingCloud = false;
         }
@@ -458,12 +481,14 @@
     async function pushConfigToSupabase() {
         if (!supabaseClient) return false;
         try {
-            const { error } = await supabaseClient.from('app_config').upsert([
-                { id: 1, config_json: appConfig, updated_at: new Date().toISOString() }
-            ]);
+            const { error } = await supabaseClient.from('app_config').upsert({
+                id: 1,
+                config_json: appConfig,
+                updated_at: new Date().toISOString()
+            });
             if (error) {
                 console.error('Push config error:', error);
-                showToast(`Lỗi lưu cấu hình lên Cloud: ${error.message}. Bạn cần dán mã SQL vào Supabase.com!`, 'error');
+                showToast(`Lỗi lưu cấu hình lên Cloud: ${error.message}`, 'error');
                 return false;
             }
             return true;
@@ -476,7 +501,7 @@
     async function pushEmployeesToSupabase() {
         if (!supabaseClient) return false;
         try {
-            await supabaseClient.from('employees').delete().neq('code', '');
+            await supabaseClient.from('employees').delete().neq('code', 'TEMP_DEL_999');
             if (employees.length > 0) {
                 const { error } = await supabaseClient.from('employees').insert(
                     employees.map(e => ({ code: e.code, name: e.name }))
@@ -494,9 +519,6 @@
         }
     }
 
-    // ----------------------------------------------------------------------
-    // 5. Countdown Ticker & Fixed Top Status Banner
-    // ----------------------------------------------------------------------
     function startCountdownTicker() {
         if (timerInterval) clearInterval(timerInterval);
         checkTimeAndTicker();
@@ -570,9 +592,7 @@
         return `${hours}:${mins} - ${day}/${month}/${year}`;
     }
 
-    // ----------------------------------------------------------------------
-    // 6. Render Ultra-Compact Cards Grid
-    // ----------------------------------------------------------------------
+    // Render Calendar Days Cards
     function renderDaysGrid() {
         daysListEl.innerHTML = '';
 
@@ -589,16 +609,19 @@
 
             const dateFormatted = `${targetYear}-${mStr}-${String(dayNum).padStart(2, '0')}`;
             const displayDateStr = `${String(dayNum).padStart(2, '0')}/${mStr}`;
-            const existingReg = registrations[dateFormatted];
+            
+            const dayRegs = registrationsList.filter(r => r.dateStr === dateFormatted);
+            const approvedRegs = dayRegs.filter(r => r.status === 'approved');
+            const pendingRegs = dayRegs.filter(r => r.status === 'pending');
 
-            if (activeFilter === 'available' && (isSunday || existingReg)) continue;
-            if (activeFilter === 'registered' && !existingReg) continue;
+            if (activeFilter === 'available' && (isSunday || approvedRegs.length > 0)) continue;
+            if (activeFilter === 'registered' && approvedRegs.length === 0 && pendingRegs.length === 0) continue;
             if (activeFilter === 'sunday' && !isSunday) continue;
 
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 const matchDay = dayName.toLowerCase().includes(q) || displayDateStr.includes(q);
-                const matchEmp = existingReg && (existingReg.empCode.toLowerCase().includes(q) || existingReg.empName.toLowerCase().includes(q));
+                const matchEmp = dayRegs.some(r => r.empCode.toLowerCase().includes(q) || r.empName.toLowerCase().includes(q) || r.reason.toLowerCase().includes(q));
                 if (!matchDay && !matchEmp) continue;
             }
 
@@ -614,21 +637,40 @@
                     </div>
                 `;
             }
-            // 2. GREEN CARD: REGISTERED
-            else if (existingReg) {
+            // 2. GREEN CARD: HAS APPROVED REGISTRATION (Renders Approved Employee Name!)
+            else if (approvedRegs.length > 0) {
                 card.className = 'compact-card card-green';
+                const firstApproved = approvedRegs[0];
+                const extraApprovedText = approvedRegs.length > 1 ? ` (+${approvedRegs.length - 1})` : '';
+                card.innerHTML = `
+                    <div class="card-top">
+                        <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/${mStr}</span>
+                        <span class="card-day-name">${dayName}</span>
+                    </div>
+                    <div class="card-body-text" title="Lý do: ${escapeHtml(firstApproved.reason)}">
+                        <i class="fa-solid fa-user-check" style="margin-right:6px; color:#16a34a;"></i>
+                        ${escapeHtml(firstApproved.empCode)} - ${escapeHtml(firstApproved.empName)}${extraApprovedText}
+                    </div>
+                `;
+            }
+            // 3. AMBER CARD: HAS PENDING REGISTRATIONS (Clickable for others to apply too)
+            else if (pendingRegs.length > 0) {
+                card.className = 'compact-card card-amber';
+                card.dataset.date = dateFormatted;
+                card.dataset.title = `${dayName}, Ngày ${String(dayNum).padStart(2, '0')}/${mStr}/${targetYear}`;
+                card.style.cursor = 'pointer';
                 card.innerHTML = `
                     <div class="card-top">
                         <span class="card-date-badge">${String(dayNum).padStart(2, '0')}/${mStr}</span>
                         <span class="card-day-name">${dayName}</span>
                     </div>
                     <div class="card-body-text">
-                        <i class="fa-solid fa-user-check" style="margin-right:6px; color:#16a34a;"></i>
-                        ${escapeHtml(existingReg.empCode)} - ${escapeHtml(existingReg.empName)}
+                        <i class="fa-solid fa-clock-rotate-left" style="margin-right:6px; color:#d97706;"></i>
+                        Chờ duyệt (${pendingRegs.length} đơn)
                     </div>
                 `;
             }
-            // 3. BLUE CARD: AVAILABLE
+            // 4. BLUE CARD: AVAILABLE
             else {
                 card.className = 'compact-card card-blue';
                 card.dataset.date = dateFormatted;
@@ -648,9 +690,6 @@
         }
     }
 
-    // ----------------------------------------------------------------------
-    // 7. Render Custom Colorful Employee Cards Grid Selector
-    // ----------------------------------------------------------------------
     function renderEmployeeCardsGrid() {
         empCardGrid.innerHTML = '';
         selectedEmpValue.value = '';
@@ -687,9 +726,6 @@
         empTableCount.textContent = employees.length;
     }
 
-    // ----------------------------------------------------------------------
-    // 8. Event Handlers
-    // ----------------------------------------------------------------------
     function setupEventListeners() {
         searchInput.addEventListener('input', (e) => {
             searchQuery = e.target.value;
@@ -705,7 +741,6 @@
             });
         });
 
-        // User Guide Modal Controls
         btnHeaderGuide.addEventListener('click', () => openModal(guideModal));
         btnCountdownGuide.addEventListener('click', () => openModal(guideModal));
         closeGuideModal.addEventListener('click', () => closeModal(guideModal));
@@ -739,27 +774,21 @@
             }
         });
 
-        // Direct Card Click
+        // Direct Card Click on Blue or Amber Card
         daysListEl.addEventListener('click', (e) => {
-            const blueCard = e.target.closest('.card-blue');
-            if (blueCard) {
-                const dateFormatted = blueCard.dataset.date;
-                const titleStr = blueCard.dataset.title;
-
-                if (registrations[dateFormatted]) {
-                    showToast(`Ngày này đã có người đăng ký trước!`, 'error');
-                    renderDaysGrid();
-                    return;
-                }
+            const clickableCard = e.target.closest('.card-blue, .card-amber');
+            if (clickableCard) {
+                const dateFormatted = clickableCard.dataset.date;
+                const titleStr = clickableCard.dataset.title;
 
                 modalDateTitle.textContent = titleStr;
                 modalDateInput.value = dateFormatted;
+                registerReason.value = '';
                 renderEmployeeCardsGrid();
                 openModal(registerModal);
             }
         });
 
-        // Employee Card Selection Click
         empCardGrid.addEventListener('click', (e) => {
             const card = e.target.closest('.emp-select-card');
             if (card) {
@@ -772,43 +801,56 @@
         closeRegisterModal.addEventListener('click', () => closeModal(registerModal));
         btnCancelRegister.addEventListener('click', () => closeModal(registerModal));
 
+        // Submit Employee Registration
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const dateStr = modalDateInput.value;
             const selectedEmpVal = selectedEmpValue.value;
+            const reasonVal = registerReason.value.trim();
 
             if (!selectedEmpVal) {
                 showToast('Vui lòng chạm chọn 1 Thẻ Nhân Viên!', 'warning');
                 return;
             }
 
-            if (registrations[dateStr]) {
-                const existing = registrations[dateStr];
-                showToast(`Đã có người chọn trước! Ngày này thuộc về ${existing.empCode} - ${existing.empName}.`, 'error');
-                closeModal(registerModal);
-                renderDaysGrid();
+            if (!reasonVal) {
+                showToast('Vui lòng nhập Lý Do xin nghỉ phép!', 'warning');
+                registerReason.focus();
                 return;
             }
 
             const [empCode, empName] = selectedEmpVal.split('|');
-            const nowStr = new Date().toLocaleString('vi-VN');
 
-            // If Supabase client is connected, push to Cloud first and check error
+            // Check if this employee already applied for this date
+            const existingSameEmp = registrationsList.find(r => r.dateStr === dateStr && r.empCode === empCode && r.status !== 'rejected');
+            if (existingSameEmp) {
+                showToast(`Nhân viên ${empCode} - ${empName} đã có đơn xin nghỉ ngày này!`, 'error');
+                closeModal(registerModal);
+                return;
+            }
+
+            const nowStr = new Date().toLocaleString('vi-VN');
+            const regId = 'reg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+            const newRegRecord = {
+                id: regId,
+                date_str: dateStr,
+                emp_code: empCode,
+                emp_name: empName,
+                reason: reasonVal,
+                status: 'pending',
+                created_at: nowStr
+            };
+
             if (supabaseClient) {
-                updateCloudBadge('syncing', 'Đang lưu...');
+                updateCloudBadge('syncing', 'Đang gửi đơn...');
                 try {
-                    const { error } = await supabaseClient.from('registrations').insert([
-                        { date_str: dateStr, emp_code: empCode, emp_name: empName, note: '', created_at: nowStr }
-                    ]);
+                    const { error } = await supabaseClient.from('registrations').insert([newRegRecord]);
 
                     if (error) {
                         console.error('Supabase registration error:', error);
                         updateCloudBadge('offline', 'Lỗi Cloud');
-                        if (error.code === '23505' || (error.message && error.message.includes('duplicate'))) {
-                            showToast(`Rất tiếc! Ngày này vừa bị đồng nghiệp khác đăng ký trước. Đang làm mới...`, 'error');
-                        } else {
-                            showToast(`Không thể đồng bộ Cloud: ${error.message}`, 'error');
-                        }
+                        showToast(`Không thể đồng bộ Cloud: ${error.message}`, 'error');
                         await fetchSupabaseData(true);
                         closeModal(registerModal);
                         return;
@@ -818,12 +860,16 @@
                 }
             }
 
-            registrations[dateStr] = {
-                empCode,
-                empName,
-                note: '',
-                time: nowStr
-            };
+            registrationsList.push({
+                id: regId,
+                dateStr: dateStr,
+                empCode: empCode,
+                empName: empName,
+                reason: reasonVal,
+                status: 'pending',
+                adminNote: '',
+                createdAt: nowStr
+            });
 
             saveData();
             updateCloudBadge('online', 'Cloud Realtime');
@@ -831,7 +877,10 @@
             closeModal(registerModal);
             renderDaysGrid();
             renderAdminRegsTable();
-            showToast(`Đã chọn thành công cho ${empCode} - ${empName}!`, 'success');
+            
+            const parts = dateStr.split('-');
+            const displayDateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateStr;
+            showToast(`Đã gửi đơn xin nghỉ phép ngày ${displayDateStr} (Đang chờ Trưởng nhóm duyệt)!`, 'success');
         });
 
         closeAdminModal.addEventListener('click', () => closeModal(adminModal));
@@ -842,6 +891,17 @@
                 tabContents.forEach(c => c.classList.remove('active'));
                 btn.classList.add('active');
                 document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Admin Approval Workspace Filters (Tất cả / Chờ Duyệt / Đã Duyệt / Từ Chối)
+        const apprFilterBtns = document.querySelectorAll('.appr-filter-btn');
+        apprFilterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                apprFilterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeApprFilter = btn.dataset.apprFilter;
+                renderAdminRegsTable();
             });
         });
 
@@ -886,26 +946,56 @@
             }
         });
 
+        // Admin Approval Actions (Duyệt / Từ chối / Xóa)
         adminRegsTableBody.addEventListener('click', async (e) => {
-            const cancelBtn = e.target.closest('.btn-admin-cancel-reg');
-            if (cancelBtn) {
-                const dateFormatted = cancelBtn.dataset.date;
-                if (confirm(`Trưởng nhóm xác nhận HỦY lượt đăng ký ngày ${dateFormatted}?`)) {
-                    delete registrations[dateFormatted];
+            const approveBtn = e.target.closest('.btn-appr-approve');
+            const rejectBtn = e.target.closest('.btn-appr-reject');
+            const delBtn = e.target.closest('.btn-del-reg');
+
+            if (approveBtn) {
+                const regId = approveBtn.dataset.id;
+                const reg = registrationsList.find(r => r.id === regId);
+                if (reg) {
+                    reg.status = 'approved';
                     saveData();
                     if (supabaseClient) {
-                        updateCloudBadge('syncing', 'Đang xóa...');
-                        const { error } = await supabaseClient.from('registrations').delete().eq('date_str', dateFormatted);
-                        if (error) {
-                            console.error('Delete registration error:', error);
-                            showToast('Lỗi xóa trên Cloud: ' + error.message, 'error');
-                        } else {
-                            updateCloudBadge('online', 'Cloud Realtime');
-                        }
+                        updateCloudBadge('syncing', 'Đang duyệt...');
+                        await supabaseClient.from('registrations').update({ status: 'approved' }).eq('id', regId);
+                        updateCloudBadge('online', 'Cloud Realtime');
                     }
                     renderDaysGrid();
                     renderAdminRegsTable();
-                    showToast(`Trưởng nhóm đã hủy đăng ký ngày ${dateFormatted}`, 'info');
+                    showToast(`🎉 Trưởng nhóm đã DUYỆT đơn xin nghỉ phép cho ${reg.empCode} - ${reg.empName}!`, 'success');
+                }
+            } else if (rejectBtn) {
+                const regId = rejectBtn.dataset.id;
+                const reg = registrationsList.find(r => r.id === regId);
+                if (reg) {
+                    reg.status = 'rejected';
+                    saveData();
+                    if (supabaseClient) {
+                        updateCloudBadge('syncing', 'Đang xử lý...');
+                        await supabaseClient.from('registrations').update({ status: 'rejected' }).eq('id', regId);
+                        updateCloudBadge('online', 'Cloud Realtime');
+                    }
+                    renderDaysGrid();
+                    renderAdminRegsTable();
+                    showToast(`ℹ️ Trưởng nhóm đã TỪ CHỐI đơn xin nghỉ phép của ${reg.empCode} - ${reg.empName}.`, 'info');
+                }
+            } else if (delBtn) {
+                const regId = delBtn.dataset.id;
+                const reg = registrationsList.find(r => r.id === regId);
+                if (reg && confirm(`Xác nhận XÓA hoàn toàn đơn đăng ký này?`)) {
+                    registrationsList = registrationsList.filter(r => r.id !== regId);
+                    saveData();
+                    if (supabaseClient) {
+                        updateCloudBadge('syncing', 'Đang xóa...');
+                        await supabaseClient.from('registrations').delete().eq('id', regId);
+                        updateCloudBadge('online', 'Cloud Realtime');
+                    }
+                    renderDaysGrid();
+                    renderAdminRegsTable();
+                    showToast(`Đã xóa đơn đăng ký.`, 'info');
                 }
             }
         });
@@ -1020,10 +1110,10 @@
 
         btnClearAllRegs.addEventListener('click', async () => {
             const mStr = String((appConfig.targetMonth ?? 7) + 1).padStart(2, '0');
-            if (confirm(`CẢNH BÁO: Xóa tất cả lượt đăng ký nghỉ phép Tháng ${mStr}/${appConfig.targetYear}?`)) {
+            if (confirm(`CẢNH BÁO: Xóa tất cả đơn đăng ký nghỉ phép Tháng ${mStr}/${appConfig.targetYear}?`)) {
                 if (supabaseClient) {
                     updateCloudBadge('syncing', 'Đang xóa tất cả...');
-                    const { error } = await supabaseClient.from('registrations').delete().neq('date_str', '0000-00-00');
+                    const { error } = await supabaseClient.from('registrations').delete().neq('id', 'TEMP_DEL_999');
                     if (error) {
                         console.error('Clear all error:', error);
                         showToast(`Không thể xóa trên Cloud: ${error.message}`, 'error');
@@ -1034,7 +1124,7 @@
                     updateCloudBadge('online', 'Cloud Realtime');
                 }
 
-                registrations = {};
+                registrationsList = [];
                 saveData();
                 renderDaysGrid();
                 renderAdminRegsTable();
@@ -1045,7 +1135,6 @@
         btnSaveSupabase.addEventListener('click', () => {
             const rawUrl = supabaseUrl.value;
             const keyVal = supabaseKey.value.trim();
-
             const cleanUrl = sanitizeSupabaseUrl(rawUrl);
 
             if (!cleanUrl || !keyVal) {
@@ -1072,9 +1161,6 @@
         btnExportExcel.addEventListener('click', exportToCSV);
     }
 
-    // ----------------------------------------------------------------------
-    // 9. Helpers
-    // ----------------------------------------------------------------------
     function renderAdminEmployeeTable() {
         empTableBody.innerHTML = '';
         if (employees.length === 0) {
@@ -1098,30 +1184,82 @@
         });
     }
 
+    // Render Admin Approval Workspace Table
     function renderAdminRegsTable() {
         adminRegsTableBody.innerHTML = '';
-        const regDates = Object.keys(registrations).sort();
 
-        if (regDates.length === 0) {
-            adminRegsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Chưa có lượt đăng ký nào.</td></tr>';
+        // Calculate Counters
+        if (cntAllRegs) cntAllRegs.textContent = registrationsList.length;
+        if (cntPendingRegs) cntPendingRegs.textContent = registrationsList.filter(r => r.status === 'pending').length;
+        if (cntApprovedRegs) cntApprovedRegs.textContent = registrationsList.filter(r => r.status === 'approved').length;
+        if (cntRejectedRegs) cntRejectedRegs.textContent = registrationsList.filter(r => r.status === 'rejected').length;
+
+        let filtered = [...registrationsList];
+        if (activeApprFilter !== 'all') {
+            filtered = filtered.filter(r => r.status === activeApprFilter);
+        }
+
+        // Sort by dateStr descending, then by createdAt ASCENDING (Ai gửi trước đứng trên!)
+        filtered.sort((a, b) => {
+            if (a.dateStr !== b.dateStr) {
+                return b.dateStr.localeCompare(a.dateStr);
+            }
+            return (a.createdAt || a.id).localeCompare(b.createdAt || b.id);
+        });
+
+        if (filtered.length === 0) {
+            adminRegsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">Không có đơn xin nghỉ phép nào phù hợp với bộ lọc.</td></tr>';
             return;
         }
 
-        regDates.forEach(dateFormatted => {
-            const reg = registrations[dateFormatted];
-            const d = new Date(dateFormatted);
-            const dayName = DAY_NAMES[d.getDay()];
+        filtered.forEach(reg => {
+            const parts = reg.dateStr.split('-');
+            const displayDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : reg.dateStr;
+
+            // Find order among applications on the same date
+            const sameDateRegs = registrationsList
+                .filter(r => r.dateStr === reg.dateStr)
+                .sort((a, b) => (a.createdAt || a.id).localeCompare(b.createdAt || b.id));
+            const orderIndex = sameDateRegs.findIndex(r => r.id === reg.id) + 1;
+            const orderTag = sameDateRegs.length > 1 ? `<div style="margin-top:2px;"><span style="font-size:10px; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:10px;">Đơn #${orderIndex} (Nộp ${orderIndex === 1 ? 'đầu tiên' : 'sau'})</span></div>` : '';
+            
+            let statusBadge = `<span class="badge-status badge-pending"><i class="fa-solid fa-clock"></i> Chờ duyệt</span>`;
+            if (reg.status === 'approved') {
+                statusBadge = `<span class="badge-status badge-approved"><i class="fa-solid fa-check"></i> Đã duyệt</span>`;
+            } else if (reg.status === 'rejected') {
+                statusBadge = `<span class="badge-status badge-rejected"><i class="fa-solid fa-xmark"></i> Từ chối</span>`;
+            }
+
+            let actionBtns = '';
+            if (reg.status === 'pending') {
+                actionBtns = `
+                    <button class="btn-appr-approve" data-id="${reg.id}"><i class="fa-solid fa-check"></i> Duyệt</button>
+                    <button class="btn-appr-reject" data-id="${reg.id}"><i class="fa-solid fa-xmark"></i> Từ Chối</button>
+                    <button class="btn btn-danger btn-sm btn-del-reg" data-id="${reg.id}"><i class="fa-solid fa-trash"></i></button>
+                `;
+            } else if (reg.status === 'approved') {
+                actionBtns = `
+                    <button class="btn-appr-reject" data-id="${reg.id}"><i class="fa-solid fa-xmark"></i> Đổi sang Từ Chối</button>
+                    <button class="btn btn-danger btn-sm btn-del-reg" data-id="${reg.id}"><i class="fa-solid fa-trash"></i></button>
+                `;
+            } else {
+                actionBtns = `
+                    <button class="btn-appr-approve" data-id="${reg.id}"><i class="fa-solid fa-check"></i> Duyệt Lại</button>
+                    <button class="btn btn-danger btn-sm btn-del-reg" data-id="${reg.id}"><i class="fa-solid fa-trash"></i></button>
+                `;
+            }
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${dateFormatted.split('-').reverse().join('/')}</strong></td>
-                <td>${dayName}</td>
-                <td><span style="color:#15803d; font-weight:700;">${escapeHtml(reg.empCode)} - ${escapeHtml(reg.empName)}</span></td>
+                <td><strong>${displayDate}</strong></td>
+                <td><span style="color:#0284c7; font-weight:700;">${escapeHtml(reg.empCode)} - ${escapeHtml(reg.empName)}</span></td>
                 <td>
-                    <button class="btn btn-danger btn-sm btn-admin-cancel-reg" data-date="${dateFormatted}">
-                        <i class="fa-solid fa-xmark"></i> Hủy Đăng Ký
-                    </button>
+                    <div style="font-size:11px; color:#475569; font-weight:600;"><i class="fa-regular fa-clock"></i> ${escapeHtml(reg.createdAt || 'N/A')}</div>
+                    ${orderTag}
                 </td>
+                <td><div style="max-width:220px; font-size:12px; color:#334155; line-height:1.4;">${escapeHtml(reg.reason || 'Nghỉ phép cá nhân')}</div></td>
+                <td>${statusBadge}</td>
+                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${actionBtns}</div></td>
             `;
             adminRegsTableBody.appendChild(tr);
         });
@@ -1129,43 +1267,38 @@
 
     function exportToCSV() {
         let csvContent = "\uFEFF";
-        csvContent += "STT,Ngày Đăng Ký,Thứ,Mã Nhân Viên,Tên Nhân Viên,Thời Gian Đăng Ký\n";
+        csvContent += "STT,Ngày Đăng Ký,Mã Nhân Viên,Tên Nhân Viên,Lý Do Xin Nghỉ,Trạng Thái,Thời Gian Gửi Đơn\n";
+
+        let count = 0;
+        registrationsList.forEach((reg) => {
+            count++;
+            const parts = reg.dateStr.split('-');
+            const displayDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : reg.dateStr;
+            let statusText = 'Chờ duyệt';
+            if (reg.status === 'approved') statusText = 'Đã duyệt';
+            if (reg.status === 'rejected') statusText = 'Từ chối';
+
+            csvContent += `${count},"${displayDate}","${reg.empCode}","${reg.empName}","${reg.reason || ''}","${statusText}","${reg.createdAt || ''}"\n`;
+        });
+
+        if (count === 0) {
+            showToast('Chưa có đơn xin nghỉ phép nào để xuất Excel!', 'warning');
+            return;
+        }
 
         const targetMonth = appConfig.targetMonth ?? 7;
         const targetYear = appConfig.targetYear ?? 2026;
-        const totalDaysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
         const mStr = String(targetMonth + 1).padStart(2, '0');
-
-        let count = 0;
-        for (let dayNum = 1; dayNum <= totalDaysInMonth; dayNum++) {
-            const dateObj = new Date(targetYear, targetMonth, dayNum);
-            const dayOfWeekIndex = dateObj.getDay();
-            const dayName = DAY_NAMES[dayOfWeekIndex];
-            const dateFormatted = `${targetYear}-${mStr}-${String(dayNum).padStart(2, '0')}`;
-            const displayDateStr = `${String(dayNum).padStart(2, '0')}/${mStr}/${targetYear}`;
-
-            const reg = registrations[dateFormatted];
-
-            if (reg) {
-                count++;
-                csvContent += `${count},"${displayDateStr}","${dayName}","${reg.empCode}","${reg.empName}","${reg.time || ''}"\n`;
-            }
-        }
-
-        if (count === 0) {
-            showToast('Chưa có lượt đăng ký nào để xuất Excel!', 'warning');
-            return;
-        }
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `Danh_Sach_Dang_Ky_Nghi_Phep_Thang_${mStr}_${targetYear}.csv`);
+        link.setAttribute("download", `Danh_Sach_Don_Xin_Nghi_Phep_Thang_${mStr}_${targetYear}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast(`Đã xuất file Excel gồm ${count} lượt đăng ký!`, 'success');
+        showToast(`Đã xuất file Excel gồm ${count} đơn xin nghỉ phép!`, 'success');
     }
 
     function openModal(modalEl) { modalEl.classList.add('active'); }

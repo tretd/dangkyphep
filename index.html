@@ -80,7 +80,8 @@
             <span class="section-title" id="gridTitleSection"><i class="fa-solid fa-calendar-days"></i> Lịch Đăng Ký Tháng 08/2026</span>
             <span class="legend">
                 <span class="legend-item"><span class="dot dot-available"></span> Chưa chọn (Xanh dương)</span>
-                <span class="legend-item"><span class="dot dot-registered"></span> Đã chọn (Xanh lá)</span>
+                <span class="legend-item"><span class="dot dot-pending" style="background:#f59e0b;"></span> Chờ duyệt (Cam)</span>
+                <span class="legend-item"><span class="dot dot-registered"></span> Đã duyệt (Xanh lá)</span>
                 <span class="legend-item"><span class="dot dot-sunday"></span> Chủ nhật (Đỏ)</span>
             </span>
         </div>
@@ -274,6 +275,11 @@
                         </div>
                     </div>
 
+                    <div class="form-group" style="margin-top:14px;">
+                        <label for="registerReason" style="font-weight:700; font-size:12px; margin-bottom:6px; display:block; color:#0f172a;"><i class="fa-solid fa-comment-dots" style="color:#0284c7;"></i> Lý Do Xin Nghỉ Phép (*):</label>
+                        <textarea id="registerReason" class="form-control" rows="2" placeholder="VD: Việc gia đình, Khám sức khỏe cá nhân, Đi công tác..." required style="width:100%; padding:10px; border-radius:10px; border:1px solid #cbd5e1; font-family:inherit; font-size:12px; resize:vertical;"></textarea>
+                    </div>
+
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" id="btnCancelRegister">Hủy bỏ</button>
                         <button type="submit" class="btn btn-primary" id="btnSubmitRegister">
@@ -354,19 +360,32 @@
                     </div>
                 </div>
 
-                <!-- Tab 2: Admin Manage Registrations -->
+                <!-- Tab 2: Admin Manage & Approve Registrations -->
                 <div class="tab-content" id="tabManageRegs">
                     <div class="config-card">
-                        <h4><i class="fa-solid fa-calendar-check"></i> Danh Sách Lịch Đã Đăng Ký</h4>
-                        <p class="config-desc">Chỉ Trưởng nhóm mới có quyền hủy hoặc điều chỉnh lượt đăng ký nghỉ phép của nhân viên.</p>
-                        <div class="table-responsive">
+                        <div class="approval-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <div>
+                                <h4 style="margin:0; font-size:16px; font-weight:800; color:#0f172a;"><i class="fa-solid fa-user-check" style="color:#0284c7;"></i> Không Gian Duyệt Đơn Xin Nghỉ Phép</h4>
+                                <p class="config-desc" style="margin:2px 0 0 0;">Xem lý do xin nghỉ và bấm Duyệt hoặc Từ Chối cho nhân viên.</p>
+                            </div>
+                            <div class="appr-filter-group" style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button type="button" class="appr-filter-btn active" data-appr-filter="all">Tất cả (<span id="cntAllRegs">0</span>)</button>
+                                <button type="button" class="appr-filter-btn" data-appr-filter="pending">Chờ Duyệt (<span id="cntPendingRegs">0</span>)</button>
+                                <button type="button" class="appr-filter-btn" data-appr-filter="approved">Đã Duyệt (<span id="cntApprovedRegs">0</span>)</button>
+                                <button type="button" class="appr-filter-btn" data-appr-filter="rejected">Từ Chối (<span id="cntRejectedRegs">0</span>)</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>Ngày</th>
-                                        <th>Thứ</th>
-                                        <th>Nhân Viên Đăng Ký</th>
-                                        <th>Thao Tác Trưởng Nhóm</th>
+                                        <th style="min-width:110px;">Ngày Xin Nghỉ</th>
+                                        <th style="min-width:140px;">Nhân Viên</th>
+                                        <th style="min-width:140px;">Thời Gian Nộp Đơn</th>
+                                        <th>Lý Do Xin Nghỉ Phép</th>
+                                        <th style="min-width:110px;">Trạng Thái</th>
+                                        <th style="min-width:170px;">Thao Tác Trưởng Nhóm</th>
                                     </tr>
                                 </thead>
                                 <tbody id="adminRegsTableBody">
