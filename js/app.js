@@ -154,10 +154,44 @@
     let realtimeChannel = null;
     let isFetchingCloud = false;
 
+    let serverTimeOffset = 0; // Difference between Supabase Cloud UTC time and Client Device local time in ms
+    let isSyncingServerTime = false;
+
+    async function syncServerTime() {
+        if (isSyncingServerTime) return;
+        isSyncingServerTime = true;
+        try {
+            const startMs = Date.now();
+            const cleanUrl = sanitizeSupabaseUrl(supabaseConfig.url || DEFAULT_SUPABASE.url);
+            const activeKey = supabaseConfig.key || DEFAULT_SUPABASE.key;
+            
+            const res = await fetch(`${cleanUrl}/rest/v1/`, {
+                method: 'HEAD',
+                headers: { 'apikey': activeKey }
+            });
+            const dateHead = res.headers.get('date');
+            if (dateHead) {
+                const serverMs = new Date(dateHead).getTime();
+                const latency = (Date.now() - startMs) / 2;
+                serverTimeOffset = (serverMs + latency) - Date.now();
+                console.log('⏰ Cloud Server Time Synced! Offset:', serverTimeOffset, 'ms');
+            }
+        } catch (e) {
+            console.warn('Sync server time exception:', e);
+        } finally {
+            isSyncingServerTime = false;
+        }
+    }
+
+    function getCloudServerNow() {
+        return new Date(Date.now() + serverTimeOffset);
+    }
+
     // Initialization
     function init() {
         loadData();
         setupEventListeners();
+        syncServerTime();
         initSupabaseIfConfigured();
         updateMonthUIHeaders();
         renderDaysGrid();
@@ -526,7 +560,7 @@
     }
 
     function checkTimeAndTicker() {
-        const now = new Date();
+        const now = getCloudServerNow();
         const mStr = String((appConfig.targetMonth ?? 7) + 1).padStart(2, '0');
         const y = appConfig.targetYear ?? 2026;
 
@@ -829,7 +863,7 @@
                 return;
             }
 
-            const nowStr = new Date().toLocaleString('vi-VN');
+            const nowStr = getCloudServerNow().toLocaleString('vi-VN');
             const regId = 'reg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
 
             const newRegRecord = {
@@ -1071,7 +1105,7 @@
         const btnSetLockNow = document.getElementById('btnSetLockNow');
         if (btnSetLockNow) {
             btnSetLockNow.addEventListener('click', async () => {
-                const now = new Date();
+                const now = getCloudServerNow();
                 const futureStart = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
                 const futureEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
