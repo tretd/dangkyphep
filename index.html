@@ -40,7 +40,7 @@
                 </div>
                 <div class="brand-text">
                     <h1 id="appHeaderTitle">ĐĂNG KÝ NGHỈ PHÉP</h1>
-                    <p class="subtitle" id="appHeaderSub">THÁNG 08 / 2026</p>
+                    <p class="subtitle" id="appHeaderSub">THÁNG 08 / 2026 • TỐI ĐA 1 NGƯỜI / NGÀY</p>
                 </div>
             </div>
 
@@ -99,7 +99,7 @@
                     <i class="fa-solid fa-lock"></i>
                 </div>
                 <h2>LỊCH ĐĂNG KÝ CHƯA MỞ</h2>
-                <p class="cd-desc" id="cdDescText">Đang trong thời gian chờ mở lịch đăng ký.</p>
+                <p class="cd-desc" id="cdDescText">Đang trong thời gian đếm ngược mở lịch đăng ký.</p>
 
                 <!-- Countdown Clock Digits -->
                 <div class="clock-container">
@@ -147,7 +147,7 @@
                 <div class="guide-welcome-banner">
                     <div class="guide-banner-icon"><i class="fa-solid fa-lightbulb"></i></div>
                     <div>
-                        <h4>Quy Trình Đăng Ký & Nguyên Tắc Duyệt Lịch</h4>
+                        <h4>Quy Trình Đăng Ký & Nguyên Tắc Duyệt Lịch Công Bằng</h4>
                         <p>Đăng ký đơn giản qua 3 bước và tuân thủ các quy định ưu tiên xét duyệt lịch phép của Trưởng nhóm.</p>
                     </div>
                 </div>
@@ -283,7 +283,17 @@
                     <i class="fa-solid fa-calendar-day"></i>
                     <div>
                         <div class="selected-date-title" id="modalDateTitle">Thứ ..., Ngày ...</div>
-                        <div class="selected-date-sub">Chạm chọn nhân viên bên dưới để xác nhận:</div>
+                        <div class="selected-date-sub">Chạm chọn 1 thẻ nhân viên bên dưới để xác nhận:</div>
+                    </div>
+                </div>
+
+                <div class="pending-list-banner" id="pendingListBanner" style="display:none; margin-bottom:14px; background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:12px;">
+                    <div style="font-weight:700; font-size:12px; color:#b45309; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-clock-rotate-left" style="color:#d97706;"></i>
+                        <span>Các đơn đang chờ Trưởng nhóm duyệt trong ngày này:</span>
+                    </div>
+                    <div id="pendingItemsContainer" style="display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto;">
+                        <!-- Dynamic pending items rendered by app.js -->
                     </div>
                 </div>
 
@@ -292,7 +302,7 @@
                     <input type="hidden" id="selectedEmpValue" required>
                     
                     <div class="form-group">
-                        <label class="emp-grid-label"><i class="fa-solid fa-user-check"></i> Danh Sách Nhân Viên:</label>
+                        <label class="emp-grid-label"><i class="fa-solid fa-user-check"></i> Danh Sách Thẻ Nhân Viên:</label>
                         <div class="emp-card-grid" id="empCardGrid">
                             <!-- Dynamic Cards rendered by app.js -->
                         </div>
@@ -318,7 +328,7 @@
     <div class="modal-overlay" id="adminModal">
         <div class="modal-content modal-large modal-fullscreen apple-card">
             <div class="modal-header">
-                <h3><i class="fa-solid fa-user-gear"></i> Cấu Hình Trưởng Nhóm</h3>
+                <h3><i class="fa-solid fa-user-gear"></i> Cấu Hình Trưởng Nhóm (Admin)</h3>
                 <button class="close-btn" id="closeAdminModal">&times;</button>
             </div>
             <div class="modal-body">

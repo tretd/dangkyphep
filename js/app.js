@@ -459,7 +459,7 @@
                     dateStr: item.date_str,
                     empCode: item.emp_code,
                     empName: item.emp_name,
-                    reason: item.reason || '',
+                    reason: item.note || item.reason || 'Nghỉ phép cá nhân',
                     status: item.status || 'pending',
                     adminNote: item.admin_note || '',
                     createdAt: item.created_at || ''
@@ -821,6 +821,36 @@
                 modalDateTitle.textContent = titleStr;
                 modalDateInput.value = dateFormatted;
                 registerReason.value = '';
+
+                // Render Pending List in Modal for Employees
+                const pendingForDate = registrationsList
+                    .filter(r => r.dateStr === dateFormatted && r.status === 'pending')
+                    .sort((a, b) => (a.createdAt || String(a.id)).localeCompare(b.createdAt || String(b.id)));
+
+                const pendingListBanner = document.getElementById('pendingListBanner');
+                const pendingItemsContainer = document.getElementById('pendingItemsContainer');
+
+                if (pendingListBanner && pendingItemsContainer) {
+                    if (pendingForDate.length > 0) {
+                        pendingListBanner.style.display = 'block';
+                        pendingItemsContainer.innerHTML = '';
+                        pendingForDate.forEach((p, idx) => {
+                            const itemDiv = document.createElement('div');
+                            itemDiv.style.cssText = 'background:#ffffff; border:1px solid #fef08a; padding:8px 10px; border-radius:8px; font-size:11px; color:#334155; display:flex; flex-direction:column; gap:2px;';
+                            itemDiv.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; font-weight:700; color:#b45309;">
+                                    <span>#${idx + 1}. ${escapeHtml(p.empCode)} - ${escapeHtml(p.empName)}</span>
+                                    <span style="font-size:10px; opacity:0.85;"><i class="fa-regular fa-clock"></i> ${escapeHtml(p.createdAt || '')}</span>
+                                </div>
+                                <div style="color:#475569; font-style:italic;">"Lý do: ${escapeHtml(p.reason || 'Nghỉ phép cá nhân')}"</div>
+                            `;
+                            pendingItemsContainer.appendChild(itemDiv);
+                        });
+                    } else {
+                        pendingListBanner.style.display = 'none';
+                    }
+                }
+
                 renderEmployeeCardsGrid();
                 openModal(registerModal);
             }
@@ -875,6 +905,7 @@
                 emp_code: empCode,
                 emp_name: empName,
                 reason: reasonVal,
+                note: reasonVal,
                 status: 'pending',
                 created_at: nowStr
             };
@@ -1009,13 +1040,18 @@
 
             if (approveBtn) {
                 const regId = approveBtn.dataset.id;
-                const reg = registrationsList.find(r => r.id === regId);
+                const reg = registrationsList.find(r => String(r.id) === String(regId));
                 if (reg) {
                     reg.status = 'approved';
                     saveData();
                     if (supabaseClient) {
                         updateCloudBadge('syncing', 'Đang duyệt...');
-                        await supabaseClient.from('registrations').update({ status: 'approved' }).eq('id', regId);
+                        const targetId = isNaN(Number(regId)) ? regId : Number(regId);
+                        let { error } = await supabaseClient.from('registrations').update({ status: 'approved' }).eq('id', targetId);
+                        if (error) {
+                            console.warn('Update status by id failed, retrying with fallback query...', error);
+                            await supabaseClient.from('registrations').update({ status: 'approved' }).eq('date_str', reg.dateStr).eq('emp_code', reg.empCode);
+                        }
                         updateCloudBadge('online', 'Cloud Realtime');
                     }
                     renderDaysGrid();
@@ -1024,13 +1060,18 @@
                 }
             } else if (rejectBtn) {
                 const regId = rejectBtn.dataset.id;
-                const reg = registrationsList.find(r => r.id === regId);
+                const reg = registrationsList.find(r => String(r.id) === String(regId));
                 if (reg) {
                     reg.status = 'rejected';
                     saveData();
                     if (supabaseClient) {
                         updateCloudBadge('syncing', 'Đang xử lý...');
-                        await supabaseClient.from('registrations').update({ status: 'rejected' }).eq('id', regId);
+                        const targetId = isNaN(Number(regId)) ? regId : Number(regId);
+                        let { error } = await supabaseClient.from('registrations').update({ status: 'rejected' }).eq('id', regId);
+                        if (error) {
+                            console.warn('Update status by id failed, retrying with fallback query...', error);
+                            await supabaseClient.from('registrations').update({ status: 'rejected' }).eq('date_str', reg.dateStr).eq('emp_code', reg.empCode);
+                        }
                         updateCloudBadge('online', 'Cloud Realtime');
                     }
                     renderDaysGrid();
@@ -1039,13 +1080,17 @@
                 }
             } else if (delBtn) {
                 const regId = delBtn.dataset.id;
-                const reg = registrationsList.find(r => r.id === regId);
-                if (reg && confirm(`Xác nhận XÓA hoàn toàn đơn đăng ký này?`)) {
-                    registrationsList = registrationsList.filter(r => r.id !== regId);
+                const reg = registrationsList.find(r => String(r.id) === String(regId));
+                if (reg && confirm(`Xác nhận XÓA hoàn toàn đơn đăng ký của ${reg.empCode} - ${reg.empName}?`)) {
+                    registrationsList = registrationsList.filter(r => String(r.id) !== String(regId));
                     saveData();
                     if (supabaseClient) {
                         updateCloudBadge('syncing', 'Đang xóa...');
-                        await supabaseClient.from('registrations').delete().eq('id', regId);
+                        const targetId = isNaN(Number(regId)) ? regId : Number(regId);
+                        let { error } = await supabaseClient.from('registrations').delete().eq('id', targetId);
+                        if (error) {
+                            await supabaseClient.from('registrations').delete().eq('date_str', reg.dateStr).eq('emp_code', reg.empCode);
+                        }
                         updateCloudBadge('online', 'Cloud Realtime');
                     }
                     renderDaysGrid();
